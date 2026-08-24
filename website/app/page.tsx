@@ -1,186 +1,165 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 
-import { BrandMark } from "@/components/BrandMark";
+import { ProcessTabsCarousel } from "@/components/ProcessTabsCarousel";
 import { Section } from "@/components/Section";
-import { site } from "@/lib/site";
+
+const pageDescription =
+  "A resume project overview for CutCare, covering the problem, process, technical progress, and lessons behind the app build.";
 
 export const metadata: Metadata = {
-  title: "CutCare",
-  description:
-    "CutCare helps clients discover barbers, book appointments, message their barber, and keep hair-care context organized.",
+  title: "CutCare Project",
+  description: pageDescription,
   openGraph: {
-    title: "CutCare",
-    description: site.description,
+    title: "CutCare Project",
+    description: pageDescription,
     url: "/",
   },
 };
 
-const featureCards = [
-  {
-    title: "Barber discovery",
-    body: "Clients can search for barbers, review profiles, compare services, and see details that help them choose confidently.",
-  },
-  {
-    title: "Appointment booking",
-    body: "Clients request appointments while barbers manage booking status, availability, services, and client relationships.",
-  },
-  {
-    title: "Messaging",
-    body: "Clients and barbers can keep appointment details and follow-up conversations in one focused place.",
-  },
-  {
-    title: "Hair Profiles",
-    body: "Clients can save hair profile details and photos so future recommendations and barber conversations have better context.",
-  },
-];
-
-const useCases = [
-  "Find barbers and review their services, location, portfolio, and ratings.",
-  "Request appointments and keep booking updates organized.",
-  "Save hair notes, style links, and Hair Profile details for future visits.",
-  "Ask the AI Hair Assistant for grooming, haircut, styling, and barber conversation guidance.",
-];
-
-const barberUseCases = [
-  "Create a profile with business details, services, portfolio images, and accepted payment methods.",
-  "Manage appointment requests and client communication.",
-  "Keep private notes for client preferences and visit history.",
-  "Use availability and calendar tools to stay organized.",
-];
-
 export default function Home() {
   return (
     <>
-      <section className="mx-auto grid max-w-6xl gap-10 px-5 py-14 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-20">
-        <div>
-          <BrandMark />
-          <h1 className="mt-8 max-w-3xl text-4xl font-black tracking-normal text-cutcare-ink md:text-6xl">
-            Barber booking and hair-care context in one app.
+      <section className="mx-auto max-w-5xl px-5 pb-12 pt-14 md:pb-16 md:pt-20">
+        <div className="text-center">
+          <h1 className="text-4xl font-black tracking-normal text-cutcare-ink md:text-6xl">
+            Project Overview
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-cutcare-body">
-            CutCare helps clients discover barbers, request appointments, message
-            their barber, and keep useful hair profile details ready for the next cut.
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-cutcare-body">
+            A personal software project documenting how I planned, built, and
+            iterated on a barber booking app while solving a real scheduling
+            problem from my own experience.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/support"
-              className="rounded-full bg-cutcare-primary px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-cutcare-primaryPressed"
-            >
-              Get Support
-            </Link>
-            <Link
-              href="/privacy"
-              className="rounded-full border border-cutcare-border bg-white px-5 py-3 text-sm font-bold text-cutcare-ink transition hover:bg-cutcare-mist"
-            >
-              Privacy Policy
-            </Link>
-          </div>
         </div>
-        <div className="relative">
-          <div className="absolute inset-0 rounded-[2rem] bg-cutcare-mist" />
-          <div className="relative overflow-hidden rounded-[2rem] border border-cutcare-border bg-white p-6 shadow-soft">
-            <div className="flex items-center justify-between border-b border-cutcare-border pb-5">
-              <div>
-                <p className="text-sm font-bold text-cutcare-primary">Today</p>
-                <p className="mt-1 text-2xl font-black text-cutcare-ink">
-                  Ready for the next cut
-                </p>
-              </div>
-              <Image
-                src="/logo-glow.png"
-                alt=""
-                width={72}
-                height={72}
-                className="rounded-2xl"
-                priority
-              />
+
+        <div className="mx-auto mt-10 max-w-3xl rounded-[2rem] border border-cutcare-border bg-white p-5 shadow-soft">
+          <div className="flex items-center justify-between border-b border-cutcare-border pb-4">
+            <div>
+              <p className="text-sm font-bold text-cutcare-primary">
+                Project image placeholder
+              </p>
+              <p className="mt-1 text-2xl font-black text-cutcare-ink">
+                Actual app picture coming soon
+              </p>
             </div>
-            <div className="grid gap-4 py-5">
-              {[
-                ["Booking", "Appointment request sent"],
-                ["Messages", "Share details before the visit"],
-                ["Hair Profile", "Photos and preferences organized"],
-              ].map(([label, value]) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between rounded-lg border border-cutcare-border bg-cutcare-soft p-4"
-                >
-                  <span className="text-sm font-bold text-cutcare-body">{label}</span>
-                  <span className="text-sm font-black text-cutcare-ink">{value}</span>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-lg bg-cutcare-deep p-5 text-white">
-              <p className="text-sm font-bold text-cyan-200">AI Hair Assistant</p>
-              <p className="mt-2 text-sm leading-6 text-slate-200">
-                Personalized grooming and hairstyle guidance based on user-provided
-                context. Informational only, never medical advice.
+            <Image
+              src="/logo-glow.png"
+              alt=""
+              width={72}
+              height={72}
+              className="rounded-2xl"
+              priority
+            />
+          </div>
+          <div className="mt-5 flex aspect-[9/16] min-h-[32rem] items-center justify-center rounded-2xl border border-dashed border-cutcare-primary/40 bg-cutcare-soft p-6 text-center">
+            <div>
+              <p className="text-2xl font-black text-cutcare-ink">
+                CutCare app screenshot
+              </p>
+              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-cutcare-body">
+                Placeholder for a real screen from the project, used to show
+                progress and implementation work.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      <Section
-        title="Built for the full appointment flow"
-        description="CutCare keeps the practical parts of finding, booking, and returning to a barber close together."
-      >
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {featureCards.map((feature) => (
-            <article
-              key={feature.title}
-              className="rounded-lg border border-cutcare-border bg-white p-5 shadow-sm"
-            >
-              <h3 className="text-lg font-black text-cutcare-ink">{feature.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-cutcare-body">{feature.body}</p>
-            </article>
-          ))}
+      <Section id="description" title="Description">
+        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+          <p className="text-base leading-8 text-cutcare-body">
+            CutCare is a personal project I built to show my ability to turn a
+            real-life workflow problem into a working full-stack app. The goal of
+            this page is not to sell the app, but to show the progress, design
+            thinking, technical decisions, and implementation experience behind
+            the project.
+          </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            The project includes client and barber flows, booking management,
+            messaging, notifications, profile data, and AI-assisted support. It
+            also gave me practice dividing work across frontend, backend, and AI
+            systems while building toward an MVP.
+          </p>
         </div>
       </Section>
 
-      <Section title="For clients and barbers">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-lg border border-cutcare-border bg-white p-6">
-            <h3 className="text-xl font-black text-cutcare-ink">Clients</h3>
-            <ul className="mt-5 space-y-3">
-              {useCases.map((item) => (
-                <li key={item} className="flex gap-3 text-sm leading-6 text-cutcare-body">
-                  <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-cutcare-primary" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-lg border border-cutcare-border bg-white p-6">
-            <h3 className="text-xl font-black text-cutcare-ink">Barbers</h3>
-            <ul className="mt-5 space-y-3">
-              {barberUseCases.map((item) => (
-                <li key={item} className="flex gap-3 text-sm leading-6 text-cutcare-body">
-                  <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-cutcare-green" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+      <Section id="problem-statement" title="Problem Statement">
+        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+          <p className="text-base leading-8 text-cutcare-body">
+            While cutting hair at Purdue, managing appointments started to take
+            up more time than expected. Between barber slots, Purdue meetings,
+            going out with friends, and regular school responsibilities, it was
+            easy to forget one thing or lose track of a booking detail.
+          </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            Google Calendar helped with organization, but bookings still did not
+            automatically transfer into the calendar. Each appointment had to be
+            entered by hand, which created extra work and made mistakes more
+            likely.
+          </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            Another issue was answering the same customer questions over and
+            over. A chatbot trained with the barber&apos;s own information,
+            schedule, services, and booking rules could help customers get quick
+            answers while reducing the amount of repetitive messaging.
+          </p>
         </div>
       </Section>
 
-      <Section
-        title="AI features with clear boundaries"
-        description="The AI Hair Assistant and Hair Profile features are designed to support everyday grooming and barber conversations."
-      >
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            "Uses user-provided messages and Hair Profile context when available.",
-            "Can suggest questions, care routines, style ideas, and ways to explain preferences.",
-            "Does not diagnose medical conditions or replace a licensed professional.",
-          ].map((item) => (
-            <div key={item} className="rounded-lg bg-cutcare-mist p-5 text-sm font-semibold leading-6 text-cutcare-ink">
-              {item}
+      <Section id="process" title="Process">
+        <div className="grid gap-6">
+          <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+            <p className="text-base leading-8 text-cutcare-body">
+              I started by imagining the overall structure of the app and
+              writing down the requirements it needed to meet. From there, I
+              divided the work into frontend and backend/AI parts so both sides
+              could be built in parallel and reach a working MVP as quickly as
+              possible.
+            </p>
+            <p className="mt-5 text-base leading-8 text-cutcare-body">
+              Once the basic frontend information was on screen, I focused on
+              the backend systems that made the app feel real: messaging,
+              booking, and notifications. After that foundation was in place, I
+              came back for a frontend UI pass so the screens could start moving
+              from placeholders toward a clearer portfolio-ready project demo.
+            </p>
+            <p className="mt-5 text-base leading-8 text-cutcare-body">
+              On the AI side, I started building the RAG system by taking the
+              user&apos;s chatbot query, adding useful haircut profile context,
+              and sending that to the chatbot so it could return a stronger
+              response. Then I added a small knowledge base with common cuts,
+              reasons someone might choose them, and descriptions of each style.
+              The user&apos;s message can be vectorized and compared against that
+              knowledge base, giving the chatbot relevant context that reflects
+              my own haircut knowledge.
+            </p>
+          </div>
+
+          <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-5 shadow-sm">
+            <div className="flex min-h-[16rem] items-center justify-center rounded-lg border border-dashed border-cutcare-primary/40 bg-cutcare-soft p-6 text-center">
+              <div>
+                <p className="text-2xl font-black text-cutcare-ink">
+                  Process image placeholder
+                </p>
+                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-cutcare-body">
+                  Future space for a workflow image, architecture sketch, or app
+                  build screenshot.
+                </p>
+              </div>
             </div>
-          ))}
+          </div>
+
+          <ProcessTabsCarousel />
+        </div>
+      </Section>
+
+      <Section id="full-results" title="Full Results">
+        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+          <p className="text-base leading-8 text-cutcare-body">
+            Placeholder for the final results section. This can later include
+            completed screens, what worked, what changed, and the strongest
+            technical outcomes from the CutCare MVP.
+          </p>
         </div>
       </Section>
     </>

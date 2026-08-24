@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
 
 type SectionProps = {
+  id?: string;
   title: string;
   description?: string;
   children: ReactNode;
 };
 
-export function Section({ title, description, children }: SectionProps) {
+export function Section({ id, title, description, children }: SectionProps) {
   return (
-    <section className="mx-auto max-w-6xl px-5 py-12">
-      <div className="max-w-3xl">
+    <section id={id} className="mx-auto max-w-6xl scroll-mt-24 px-5 py-12">
+      <div className="mx-auto max-w-3xl text-center">
         <h2 className="text-2xl font-black tracking-normal text-cutcare-ink md:text-3xl">
           {title}
         </h2>
