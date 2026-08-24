@@ -10,11 +10,13 @@ _firestore_client = None
 
 def initialize_firebase():
     """
-    Initializes Firebase Admin SDK once.
+    Initializes Firebase Admin once using environment variables.
 
-    Supports two setup styles:
-    1. FIREBASE_CREDENTIALS_PATH for local service account JSON
-    2. FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY for env-based setup
+    Required environment variables:
+    - FIREBASE_PROJECT_ID
+    - FIREBASE_CLIENT_EMAIL
+    - FIREBASE_PRIVATE_KEY
+    - FIREBASE_STORAGE_BUCKET
     """
 
     global _firebase_app
@@ -26,41 +28,43 @@ def initialize_firebase():
         _firebase_app = firebase_admin.get_app()
         return _firebase_app
 
-    if settings.FIREBASE_CREDENTIALS_PATH:
-        cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
-        _firebase_app = firebase_admin.initialize_app(cred)
-        return _firebase_app
+    if not settings.FIREBASE_PROJECT_ID:
+        raise RuntimeError("Missing FIREBASE_PROJECT_ID")
 
-    if (
-        settings.FIREBASE_PROJECT_ID
-        and settings.FIREBASE_CLIENT_EMAIL
-        and settings.FIREBASE_PRIVATE_KEY
-    ):
-        private_key = settings.FIREBASE_PRIVATE_KEY.replace("\\n", "\n")
+    if not settings.FIREBASE_CLIENT_EMAIL:
+        raise RuntimeError("Missing FIREBASE_CLIENT_EMAIL")
 
-        cred = credentials.Certificate(
-            {
-                "type": "service_account",
-                "project_id": settings.FIREBASE_PROJECT_ID,
-                "private_key": private_key,
-                "client_email": settings.FIREBASE_CLIENT_EMAIL,
-                "token_uri": "https://oauth2.googleapis.com/token",
-            }
-        )
+    if not settings.FIREBASE_PRIVATE_KEY:
+        raise RuntimeError("Missing FIREBASE_PRIVATE_KEY")
 
-        _firebase_app = firebase_admin.initialize_app(cred)
-        return _firebase_app
+    if not settings.FIREBASE_STORAGE_BUCKET:
+        raise RuntimeError("Missing FIREBASE_STORAGE_BUCKET")
 
-    raise RuntimeError(
-        "Firebase is not configured. Set FIREBASE_CREDENTIALS_PATH or Firebase Admin environment variables."
+    private_key = settings.FIREBASE_PRIVATE_KEY.replace("\\n", "\n")
+
+    credential = credentials.Certificate(
+        {
+            "type": "service_account",
+            "project_id": settings.FIREBASE_PROJECT_ID,
+            "private_key": private_key,
+            "client_email": settings.FIREBASE_CLIENT_EMAIL,
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }
     )
+
+    _firebase_app = firebase_admin.initialize_app(
+        credential,
+        {
+            "storageBucket": settings.FIREBASE_STORAGE_BUCKET,
+        },
+    )
+
+    return _firebase_app
 
 
 def get_firestore_client():
     """
-    Returns a Firestore client.
-
-    This should only be called when Firebase/profile storage is enabled.
+    Returns the shared Firestore client.
     """
 
     global _firestore_client
@@ -69,6 +73,7 @@ def get_firestore_client():
         return _firestore_client
 
     initialize_firebase()
+
     _firestore_client = firestore.client()
 
     return _firestore_client
@@ -76,12 +81,8 @@ def get_firestore_client():
 
 def is_firebase_ready() -> bool:
     """
-    Returns True if Firebase can be initialized.
-    Used by /status so we can safely report readiness.
+    Returns True when Firebase Admin can initialize successfully.
     """
-
-    if not settings.firebase_configured:
-        return False
 
     try:
         initialize_firebase()
@@ -92,12 +93,8 @@ def is_firebase_ready() -> bool:
 
 def is_firestore_ready() -> bool:
     """
-    Returns True if Firestore client can be created.
-    Used by /status.
+    Returns True when the Firestore client can be created successfully.
     """
-
-    if not settings.firebase_configured:
-        return False
 
     try:
         get_firestore_client()

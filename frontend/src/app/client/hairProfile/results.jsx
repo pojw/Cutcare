@@ -1,30 +1,69 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   ActivityIndicator,
-  TextInput,Pressable
+  TextInput,
+  Pressable,
 } from "react-native";
-import { useLocalSearchParams,useRouter } from "expo-router";
+import { Ionicons } from "@/components/icons/AppIcon";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import CenterScreen from "../../../components/centerScreen";
 import { auth } from "../../../config/firebase";
-import { getHairProfile ,buildEditableHairProfile,confirmHairProfile} from "../../../services/hairProfileService";
+import {
+  getHairProfile,
+  buildEditableHairProfile,
+  confirmHairProfile,
+} from "../../../services/hairProfileService";
+function LengthGuide() {
+  return (
+    <View className="mb-4 rounded-2xl bg-app-surface-elevated px-4 py-4">
+      <Text className="text-sm font-semibold text-app-text-muted">
+        Length Guide
+      </Text>
+
+      <Text className="mt-1 text-base font-medium text-app-text">
+        Short: 1-3 inches, Medium: 3-6 inches, Long: 6+ inches
+      </Text>
+    </View>
+  );
+}
+
+function HairProfileHeader({ onBack }) {
+  return (
+    <View className="mb-6 flex-row items-center">
+      <Pressable
+        onPress={onBack}
+        className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+      >
+        <Ionicons name="arrow-back" size={24} color="#1677FF" />
+      </Pressable>
+
+      <Text className="flex-1 text-center text-3xl font-bold text-app-text">
+        Hair<Text className="text-app-primary">Results</Text>
+      </Text>
+
+      <View className="h-11 w-11" />
+    </View>
+  );
+}
 
 export default function HairProfileResults() {
   const { profileId } = useLocalSearchParams();
-const router = useRouter();
+  const router = useRouter();
+
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
-  useEffect(() => {
-    loadProfile();
-  }, [profileId]);
+  const isEditingConfirmedProfile = Boolean(
+    profile?.confirmedProfile
+  );
 
-  async function loadProfile() {
+  const loadProfile = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMessage("");
@@ -47,104 +86,111 @@ const router = useRouter();
       });
 
       setProfile(result);
-      const editableProfile = buildEditableHairProfile(
-  result.originalAiPrediction
-);
-
-setForm(editableProfile);
+      setForm(
+        result.confirmedProfile ??
+          buildEditableHairProfile(result.originalAiPrediction)
+      );
     } catch (error) {
       console.log("Error loading hair profile:", error);
       setErrorMessage("Could not load hair profile results.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [profileId]);
+
+  useEffect(() => {
+    const loadTimer = setTimeout(() => {
+      loadProfile();
+    }, 0);
+
+    return () => clearTimeout(loadTimer);
+  }, [loadProfile]);
+
   async function handleConfirm() {
-  const currentUser = auth.currentUser;
+    const currentUser = auth.currentUser;
 
-  if (!currentUser) {
-    setErrorMessage("You must be logged in.");
-    return;
+    if (!currentUser) {
+      setErrorMessage("You must be logged in.");
+      return;
+    }
+
+    if (!profileId) {
+      setErrorMessage("Missing profile ID.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setErrorMessage("");
+
+      await confirmHairProfile({
+        clientId: currentUser.uid,
+        profileId,
+        confirmedProfile: form,
+        originalAiPrediction: profile.originalAiPrediction,
+      });
+
+      router.replace("/client/hairProfile");
+    } catch (error) {
+      console.log("Error confirming hair profile:", error);
+      setErrorMessage("Could not save your hair profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  if (!profileId) {
-    setErrorMessage("Missing profile ID.");
-    return;
+  function updateField(fieldName, value) {
+    setForm((currentForm) => ({
+      ...currentForm,
+      [fieldName]: value,
+    }));
   }
 
-  try {
-    setSaving(true);
-    setErrorMessage("");
-
-    await confirmHairProfile({
-      clientId: currentUser.uid,
-      profileId,
-      confirmedProfile: form,
-      originalAiPrediction: profile.originalAiPrediction,
-    });
-
-    router.replace("/client/hairProfile");
-  } catch (error) {
-    console.log("Error confirming hair profile:", error);
-    setErrorMessage("Could not save your hair profile. Please try again.");
-  } finally {
-    setSaving(false);
-  }
-}
-function updateField(fieldName, value) {
-  setForm((currentForm) => ({
-    ...currentForm,
-    [fieldName]: value,
-  }));
-}
   if (loading) {
     return (
-      <CenterScreen>
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
         <ActivityIndicator />
-        <Text className="mt-3 text-gray-600">
+        <Text className="mt-3 text-app-text-muted">
           Loading analysis results...
         </Text>
-      </CenterScreen>
+      </SafeAreaView>
     );
   }
 
-  if (errorMessage) {
+  if (errorMessage && !profile) {
     return (
-      <CenterScreen>
-        <Text className="text-xl font-bold text-gray-900">
-          Hair Analysis
-        </Text>
+      <SafeAreaView className="flex-1 bg-app-background">
+        <View className="flex-1 px-6 py-6">
+          <HairProfileHeader onBack={() => router.back()} />
 
-        <Text className="mt-3 text-gray-600">
-          {errorMessage}
-        </Text>
-      </CenterScreen>
+          <Text className="mt-3 text-app-text-muted">
+            {errorMessage}
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
-
-  const prediction = profile?.originalAiPrediction;
 
   return (
-    <CenterScreen>
+    <SafeAreaView className="flex-1 bg-app-background">
       <ScrollView
-        className="w-full"
+        className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingVertical: 24,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="text-3xl font-bold text-gray-900">
-          Your Hair Analysis
+        <HairProfileHeader onBack={() => router.back()} />
+
+        <Text className="mb-4 text-base leading-6 text-app-text-secondary">
+          Review the information below and correct anything that does not look right.
         </Text>
 
-        <Text className="mt-3 text-base leading-6 text-gray-600">
-          Review the information below. You will be able to correct anything
-          that does not look right.
-        </Text>
+        <View>
+          <LengthGuide />
 
-        <View className="mt-6 rounded-3xl border border-gray-200 bg-white p-5">
-        <EditableRow
+         <EditableRow
   label="Overall Length"
   value={form.overallLengthCategory}
   onChangeText={(value) =>
@@ -154,25 +200,25 @@ function updateField(fieldName, value) {
 
 <EditableRow
   label="Front Length"
-  value={form.frontLengthInches}
+  value={form.frontLengthCategory}
   onChangeText={(value) =>
-    updateField("frontLengthInches", value)
+    updateField("frontLengthCategory", value)
   }
 />
 
 <EditableRow
   label="Side Length"
-  value={form.sideLengthInches}
+  value={form.sideLengthCategory}
   onChangeText={(value) =>
-    updateField("sideLengthInches", value)
+    updateField("sideLengthCategory", value)
   }
 />
 
 <EditableRow
   label="Back Length"
-  value={form.backLengthInches}
+  value={form.backLengthCategory}
   onChangeText={(value) =>
-    updateField("backLengthInches", value)
+    updateField("backLengthCategory", value)
   }
 />
 
@@ -185,18 +231,26 @@ function updateField(fieldName, value) {
 />
 
 <EditableRow
-  label="Density"
-  value={form.density}
+  label="Hairline Shape"
+  value={form.hairlineShape}
   onChangeText={(value) =>
-    updateField("density", value)
+    updateField("hairlineShape", value)
   }
 />
 
 <EditableRow
-  label="Current Style"
-  value={form.currentStyle}
+  label="Forehead Coverage"
+  value={form.foreheadCoverage}
   onChangeText={(value) =>
-    updateField("currentStyle", value)
+    updateField("foreheadCoverage", value)
+  }
+/>
+
+<EditableRow
+  label="Fringe End Level"
+  value={form.fringeEndLevel}
+  onChangeText={(value) =>
+    updateField("fringeEndLevel", value)
   }
 />
 
@@ -209,67 +263,18 @@ function updateField(fieldName, value) {
 />
 
 <EditableRow
-  label="Facial Hair"
-  value={form.facialHair}
+  label="Fade or Taper"
+  value={form.fadeOrTaperPresent}
   onChangeText={(value) =>
-    updateField("facialHair", value)
+    updateField("fadeOrTaperPresent", value)
   }
 />
-<View className="border-b border-gray-100 py-4">
-  <Text className="text-sm font-semibold text-gray-500">
-    Fade or Taper
-  </Text>
-
-  <View className="mt-3 flex-row gap-3">
-    <Pressable
-      onPress={() =>
-        updateField("hasFadeOrTaper", true)
-      }
-      className={`flex-1 rounded-xl border px-4 py-3 ${
-        form.hasFadeOrTaper === true
-          ? "border-green-500 bg-green-50"
-          : "border-gray-200 bg-white"
-      }`}
-    >
-      <Text
-        className={`text-center font-semibold ${
-          form.hasFadeOrTaper === true
-            ? "text-green-700"
-            : "text-gray-700"
-        }`}
-      >
-        Yes
-      </Text>
-    </Pressable>
-
-    <Pressable
-      onPress={() =>
-        updateField("hasFadeOrTaper", false)
-      }
-      className={`flex-1 rounded-xl border px-4 py-3 ${
-        form.hasFadeOrTaper === false
-          ? "border-green-500 bg-green-50"
-          : "border-gray-200 bg-white"
-      }`}
-    >
-      <Text
-        className={`text-center font-semibold ${
-          form.hasFadeOrTaper === false
-            ? "text-green-700"
-            : "text-gray-700"
-        }`}
-      >
-        No
-      </Text>
-    </Pressable>
-  </View>
-</View>
 
 <EditableRow
-  label="Neckline"
-  value={form.neckline}
+  label="Fade Height"
+  value={form.fadeHeight}
   onChangeText={(value) =>
-    updateField("neckline", value)
+    updateField("fadeHeight", value)
   }
 />
 
@@ -280,52 +285,77 @@ function updateField(fieldName, value) {
     updateField("earCoverage", value)
   }
 />
-{errorMessage ? (
-  <View className="mt-4 rounded-2xl bg-red-50 p-4">
-    <Text className="text-sm font-semibold text-red-600">
-      {errorMessage}
-    </Text>
-  </View>
-) : null}
 
-<Pressable
-  onPress={handleConfirm}
-  disabled={saving}
-  className={`mt-6 rounded-2xl px-5 py-4 ${
-    saving ? "bg-gray-300" : "bg-green-500"
-  }`}
->
-  {saving ? (
-    <ActivityIndicator color="white" />
-  ) : (
-    <Text className="text-center text-base font-bold text-white">
-      Confirm Hair Profile
-    </Text>
-  )}
-</Pressable>
+<EditableRow
+  label="Sideburn Length"
+  value={form.sideburnLength}
+  onChangeText={(value) =>
+    updateField("sideburnLength", value)
+  }
+/>
+
+<EditableRow
+  label="Back Blending"
+  value={form.backBlending}
+  onChangeText={(value) =>
+    updateField("backBlending", value)
+  }
+/>
+
+<EditableRow
+  label="Nape Coverage"
+  value={form.napeCoverage}
+  onChangeText={(value) =>
+    updateField("napeCoverage", value)
+  }
+/>
+
+          {errorMessage ? (
+            <View className="mt-4 rounded-2xl bg-app-surface-elevated p-4">
+              <Text className="text-sm font-semibold text-app-error">
+                {errorMessage}
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={handleConfirm}
+            disabled={saving}
+            className={`mt-6 rounded-2xl px-5 py-4 ${
+              saving
+                ? "bg-app-disabled"
+                : "bg-app-primary active:bg-app-primary-pressed"
+            }`}
+          >
+            {saving ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-center text-base font-bold text-app-text-inverse">
+                {isEditingConfirmedProfile
+                  ? "Save Changes"
+                  : "Confirm Hair Profile"}
+              </Text>
+            )}
+          </Pressable>
         </View>
       </ScrollView>
-    </CenterScreen>
+    </SafeAreaView>
   );
 }
 
-function EditableRow({
-  label,
-  value,
-  onChangeText,
-}) {
+function EditableRow({ label, value, onChangeText }) {
   return (
-    <View className="border-b border-gray-100 py-4">
-      <Text className="text-sm font-semibold text-gray-500">
+    <View className="mb-3 rounded-2xl bg-app-surface-elevated px-4 py-4">
+      <Text className="text-sm font-semibold text-app-text-muted">
         {label}
       </Text>
 
       <TextInput
         value={String(value ?? "")}
         onChangeText={onChangeText}
-        className="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-base text-gray-900"
+        className="mt-2 rounded-xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
         placeholder={`Enter ${label.toLowerCase()}`}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor="#8292A6"
       />
     </View>
   );

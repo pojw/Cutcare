@@ -44,7 +44,15 @@ function toTime24(hour, minute, period) {
   return `${String(hourNumber).padStart(2, "0")}:${minute}`;
 }
 
-function WheelColumn({ title, options, selectedValue, onChange, disabled }) {
+function WheelColumn({
+  title,
+  options,
+  selectedValue,
+  onChange,
+  disabled,
+  onTouchStart,
+  onTouchEnd,
+}) {
   const scrollRef = useRef(null);
   const selectedIndex = Math.max(options.indexOf(selectedValue), 0);
 
@@ -74,22 +82,21 @@ function WheelColumn({ title, options, selectedValue, onChange, disabled }) {
 
   return (
     <View className="flex-1">
-      <Text className="mb-1 text-center text-[10px] font-bold uppercase text-gray-400">
+      <Text className="mb-1 text-center text-[10px] font-bold uppercase text-app-text-muted">
         {title}
       </Text>
 
       <View
         style={{ height: WHEEL_HEIGHT }}
-        className="relative overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+        className="relative overflow-hidden rounded-xl border border-app-border bg-app-surface-elevated"
       >
-        {/* center selected row */}
         <View
           pointerEvents="none"
           style={{
             top: ITEM_HEIGHT,
             height: ITEM_HEIGHT,
           }}
-          className="absolute left-1 right-1 z-10 rounded-lg border border-gray-300 bg-white/80"
+          className="absolute left-1 right-1 rounded-lg border border-app-border-subtle bg-app-surface"
         />
 
         <ScrollView
@@ -100,8 +107,12 @@ function WheelColumn({ title, options, selectedValue, onChange, disabled }) {
           snapToInterval={ITEM_HEIGHT}
           decelerationRate="fast"
           bounces={false}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchEnd}
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={handleScrollEnd}
+          style={{ zIndex: 1 }}
           contentContainerStyle={{
             paddingTop: ITEM_HEIGHT,
             paddingBottom: ITEM_HEIGHT,
@@ -119,8 +130,8 @@ function WheelColumn({ title, options, selectedValue, onChange, disabled }) {
                 <Text
                   className={`text-center ${
                     active
-                      ? "text-lg font-bold text-black"
-                      : "text-sm font-semibold text-gray-400"
+                      ? "text-lg font-bold text-app-text"
+                      : "text-sm font-semibold text-app-text-muted"
                   }`}
                 >
                   {item}
@@ -141,7 +152,10 @@ export default function TimeInput({
   disabled = false,
   onWheelTouchStart,
   onWheelTouchEnd,
-}) {  const parsed = parseTime24(value);
+  showLabel = true,
+  showBorder = true,
+}) {
+  const parsed = parseTime24(value);
 
   function updateTime(nextValues) {
     const nextHour = nextValues.hour ?? parsed.hour;
@@ -153,33 +167,41 @@ export default function TimeInput({
 
   return (
     <View className={disabled ? "opacity-40" : ""}>
-      <Text className="mb-2 text-sm font-semibold text-gray-700">{label}</Text>
+      {showLabel ? (
+        <Text className="mb-2 text-sm font-semibold text-app-text-secondary">
+          {label}
+        </Text>
+      ) : null}
 
-      <View className="rounded-2xl border border-gray-200 bg-white p-2">
-        <Text className="mb-2 text-center text-sm font-bold text-black">
+      <View
+        className={`rounded-2xl bg-app-surface p-2 ${
+          showBorder ? "border border-app-border" : ""
+        }`}
+      >
+        <Text className="mb-2 text-center text-sm font-bold text-app-text">
           {parsed.hour}:{parsed.minute} {parsed.period}
         </Text>
 
         <View className="flex-row gap-1">
-         <WheelColumn
-  title="Hr"
-  options={HOURS}
-  selectedValue={parsed.hour}
-  disabled={disabled}
-  onTouchStart={onWheelTouchStart}
-  onTouchEnd={onWheelTouchEnd}
-  onChange={(hour) => updateTime({ hour })}
-/>
+          <WheelColumn
+            title="Hr"
+            options={HOURS}
+            selectedValue={parsed.hour}
+            disabled={disabled}
+            onTouchStart={onWheelTouchStart}
+            onTouchEnd={onWheelTouchEnd}
+            onChange={(hour) => updateTime({ hour })}
+          />
 
-            <WheelColumn
-              title="Min"
-              options={MINUTES}
-              selectedValue={parsed.minute}
-              disabled={disabled}
-              onTouchStart={onWheelTouchStart}
-              onTouchEnd={onWheelTouchEnd}
-              onChange={(minute) => updateTime({ minute })}
-            />
+          <WheelColumn
+            title="Min"
+            options={MINUTES}
+            selectedValue={parsed.minute}
+            disabled={disabled}
+            onTouchStart={onWheelTouchStart}
+            onTouchEnd={onWheelTouchEnd}
+            onChange={(minute) => updateTime({ minute })}
+          />
 
           <WheelColumn
             title="AM"

@@ -1,32 +1,28 @@
 import { useState } from "react";
 import {
+  Image,
   View,
   Text,
   TextInput,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { useAppAlert } from "../../context/AppAlertContext";
+
 import CenterScreen from "../../components/centerScreen";
+import { auth } from "../../config/firebase";
 
 export default function ForgotPassword() {
+  const { showAppAlert } = useAppAlert();
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleResetPassword() {
-    if (!email) {
-      Alert.alert("Missing email", "Please enter your email address.");
-      return;
-    }
-
-    console.log("Reset password email sent to:", email);
-
-    // Later this will call Firebase:
-    // await sendPasswordResetEmail(auth, email);
-
-    Alert.alert(
+  function showResetSentMessage() {
+    showAppAlert(
       "Check your email",
       "If an account exists with that email, you will receive a password reset link.",
       [
@@ -38,6 +34,45 @@ export default function ForgotPassword() {
     );
   }
 
+  async function handleResetPassword() {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
+      showAppAlert("Missing email", "Please enter your email address.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await sendPasswordResetEmail(auth, trimmedEmail);
+
+      showResetSentMessage();
+    } catch (error) {
+      console.log("Reset password error:", error);
+
+      if (error?.code === "auth/invalid-email") {
+        showAppAlert(
+          "Invalid email",
+          "Please enter a valid email address."
+        );
+        return;
+      }
+
+      if (error?.code === "auth/user-not-found") {
+        showResetSentMessage();
+        return;
+      }
+
+      showAppAlert(
+        "Reset failed",
+        "We could not send a reset link right now. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <CenterScreen>
       <KeyboardAvoidingView
@@ -46,33 +81,32 @@ export default function ForgotPassword() {
       >
         <View className="w-full px-6">
           {/* Brand */}
-          <View className="mb-10 items-center">
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-3xl bg-black">
-              <Text className="text-3xl font-bold text-white">B</Text>
-            </View>
+          <View className="mb-6 items-center">
+            <Image
+              source={require("../../../assets/images/icon.png")}
+              className="mb-4 h-20 w-20 rounded-3xl"
+            />
 
-            <Text className="text-3xl font-bold text-black">
-              Reset Password
+            <Text
+              style={{ fontSize: 42 }}
+              className="font-bold text-app-text"
+            >
+              Cut<Text className="text-app-primary">Care</Text>
             </Text>
-            <Text className="mt-2 text-center text-base text-gray-500">
-              Enter your email and we’ll send you a reset link.
-            </Text>
+
           </View>
 
           {/* Form Card */}
-          <View className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+          <View className="p-2">
             <View className="mb-4">
-              <Text className="text-2xl font-bold text-black">
+              <Text className="text-xl font-bold text-app-text">
                 Forgot password?
-              </Text>
-              <Text className="mt-2 text-sm text-gray-500">
-                No worries. We’ll help you get back into your account.
               </Text>
             </View>
 
             {/* Email */}
             <View className="mb-4">
-              <Text className="mb-2 text-sm font-semibold text-gray-700">
+              <Text className="mb-2 text-sm font-semibold text-app-text-secondary">
                 Email
               </Text>
 
@@ -80,28 +114,36 @@ export default function ForgotPassword() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#8292A6"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
-                className="rounded-2xl border border-gray-300 bg-gray-50 px-4 py-4 text-base text-black"
+                className="rounded-2xl border border-app-border bg-app-surface-elevated px-4 py-4 text-base text-app-text"
               />
             </View>
 
             {/* Button */}
             <Pressable
               onPress={handleResetPassword}
-              className="rounded-2xl bg-black px-4 py-4 active:opacity-80"
+              disabled={loading}
+              className={`rounded-2xl px-4 py-4 ${
+                loading
+                  ? "bg-app-disabled"
+                  : "bg-app-primary active:bg-app-primary-pressed"
+              }`}
             >
-              <Text className="text-center text-base font-bold text-white">
-                Send Reset Link
+              <Text className="text-center text-base font-bold text-app-text-inverse">
+                {loading ? "Sending..." : "Send Reset Link"}
               </Text>
             </Pressable>
 
             {/* Back to Login */}
             <View className="mt-4 flex-row justify-center">
-              <Text className="text-gray-500">Remember your password? </Text>
-              <Link href="/login" className="font-bold text-black">
+              <Text className="text-app-text-muted">Remember your password? </Text>
+              <Link
+                href="/login"
+                style={{ color: "#1677FF", fontWeight: "700" }}
+              >
                 Log in
               </Link>
             </View>

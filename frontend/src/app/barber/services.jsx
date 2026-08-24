@@ -1,20 +1,25 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState } from "react";
 import {
   View,
   Text,
   Pressable,
   ActivityIndicator,
-  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Modal
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@/components/icons/AppIcon";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useAppAlert } from "../../context/AppAlertContext";
 
 import { auth, db } from "../../config/firebase";
+import ConfirmationModal from "../../components/ConfirmationModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 import ServiceCard from "../../components/barber/ServiceCard";
 import ServiceForm from "../../components/barber/ServiceForm";
 function createServiceId() {
@@ -46,6 +51,7 @@ function normalizeServices(value) {
 }
 
 export default function BarberServices() {
+  const { showAppAlert } = useAppAlert();
   const router = useRouter();
 
   const [services, setServices] = useState([]);
@@ -60,6 +66,13 @@ export default function BarberServices() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const [confirmationMessage, setConfirmationMessage] = useState({
+    title: "",
+    detail: "",
+  });
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
 
   useEffect(() => {
     async function loadServices() {
@@ -75,7 +88,7 @@ export default function BarberServices() {
         const barberSnap = await getDoc(barberRef);
 
         if (!barberSnap.exists()) {
-          Alert.alert(
+          showAppAlert(
             "Profile not found",
             "Your barber profile could not be found."
           );
@@ -90,14 +103,14 @@ export default function BarberServices() {
         setShowForm(false);
       } catch (error) {
         console.log("Load barber services error:", error);
-        Alert.alert("Error", "Something went wrong while loading services.");
+        showAppAlert("Error", "Something went wrong while loading services.");
       } finally {
         setLoading(false);
       }
     }
 
     loadServices();
-  }, []);
+  }, [router, showAppAlert]);
 
   async function saveServices(nextServices) {
     const currentUser = auth.currentUser;
@@ -149,17 +162,17 @@ export default function BarberServices() {
   async function handleSaveService() {
     try {
       if (!serviceName.trim()) {
-        Alert.alert("Missing service name", "Please enter a service name.");
+        showAppAlert("Missing service name", "Please enter a service name.");
         return;
       }
 
       if (!price.trim()) {
-        Alert.alert("Missing price", "Please enter a price.");
+        showAppAlert("Missing price", "Please enter a price.");
         return;
       }
 
       if (!durationMinutes.trim()) {
-        Alert.alert("Missing duration", "Please enter a duration.");
+        showAppAlert("Missing duration", "Please enter a duration.");
         return;
       }
 
@@ -167,12 +180,12 @@ export default function BarberServices() {
       const numericDuration = Number(durationMinutes);
 
       if (Number.isNaN(numericPrice) || numericPrice < 0) {
-        Alert.alert("Invalid price", "Please enter a valid price.");
+        showAppAlert("Invalid price", "Please enter a valid price.");
         return;
       }
 
       if (Number.isNaN(numericDuration) || numericDuration <= 0) {
-        Alert.alert(
+        showAppAlert(
           "Invalid duration",
           "Please enter a valid duration in minutes."
         );
@@ -213,16 +226,16 @@ export default function BarberServices() {
       clearForm();
       setEditingServiceId(null);
       setShowForm(false);
-
-      Alert.alert(
-        editingServiceId ? "Service updated" : "Service added",
-        editingServiceId
+      setConfirmationMessage({
+        title: editingServiceId ? "Service Updated" : "Service Added",
+        detail: editingServiceId
           ? "Your service has been updated."
-          : "Your new service has been saved."
-      );
+          : "Your new service has been saved.",
+      });
+      setConfirmationVisible(true);
     } catch (error) {
       console.log("Save service error:", error);
-      Alert.alert(
+      showAppAlert(
         "Save failed",
         "Something went wrong while saving the service."
       );
@@ -231,91 +244,107 @@ export default function BarberServices() {
     }
   }
 
-  async function handleDeleteService(serviceId) {
-    Alert.alert(
-      "Delete service",
-      "Are you sure you want to delete this service?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setSaving(true);
+  function openDeleteModal(service) {
+    setServiceToDelete(service);
+    setDeleteModalVisible(true);
+  }
 
-              const nextServices = services.filter(
-                (service) => service.id !== serviceId
-              );
+  function closeDeleteModal() {
+    if (saving) {
+      return;
+    }
 
-              await saveServices(nextServices);
+    setDeleteModalVisible(false);
+    setServiceToDelete(null);
+  }
 
-              setServices(nextServices);
+  async function handleConfirmDeleteService() {
+    if (!serviceToDelete) {
+      return;
+    }
 
-              if (editingServiceId === serviceId) {
-                clearForm();
-                setEditingServiceId(null);
-              }
+    try {
+      setSaving(true);
 
-              setShowForm(false);
-            } catch (error) {
-              console.log("Delete service error:", error);
-              Alert.alert(
-                "Delete failed",
-                "Something went wrong while deleting."
-              );
-            } finally {
-              setSaving(false);
-            }
-          },
-        },
-      ]
-    );
+      const nextServices = services.filter(
+        (service) => service.id !== serviceToDelete.id
+      );
+
+      await saveServices(nextServices);
+
+      setServices(nextServices);
+
+      if (editingServiceId === serviceToDelete.id) {
+        clearForm();
+        setEditingServiceId(null);
+      }
+
+      setShowForm(false);
+      setDeleteModalVisible(false);
+      setServiceToDelete(null);
+    } catch (error) {
+      console.log("Delete service error:", error);
+      showAppAlert(
+        "Delete failed",
+        "Something went wrong while deleting."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
         <ActivityIndicator size="large" />
-        <Text className="mt-4 text-gray-500">Loading services...</Text>
+        <Text className="mt-4 text-app-text-muted">Loading services...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-app-background">
+      <ConfirmationModal
+        visible={confirmationVisible}
+        title={confirmationMessage.title}
+        detail={confirmationMessage.detail}
+        onClose={() => setConfirmationVisible(false)}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-6 py-6"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="mb-6">
-            <Text className="text-3xl font-bold text-black">
-              Barber Services
-            </Text>
-            <Text className="mt-2 text-base text-gray-500">
-              Manage the services clients can book with you.
-            </Text>
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+          <View className="px-6 py-6">
+            <View className="flex-row items-center">
+              <Pressable
+                onPress={() => router.back()}
+                disabled={saving}
+                className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+              >
+                <Ionicons name="arrow-back" size={24} color="#1677FF" />
+              </Pressable>
+
+              <Text className="flex-1 text-center text-3xl font-bold text-app-text">
+                Serv<Text className="text-app-primary">ices</Text>
+              </Text>
+
+              <View className="h-11 w-11" />
+            </View>
           </View>
 
-          <View className="mb-6">
-            <Text className="mb-4 text-xl font-bold text-black">
+          <View className="mb-6 px-5">
+            <Text className="mb-4 text-xl font-bold text-app-text">
               Current Services
             </Text>
 
             {services.length === 0 ? (
-              <View className="rounded-3xl border border-gray-200 bg-white p-5">
-                <Text className="text-base font-semibold text-black">
+              <View className="rounded-3xl border border-app-border bg-app-surface p-5">
+                <Text className="text-base font-semibold text-app-text">
                   No services added yet.
                 </Text>
-                <Text className="mt-2 text-sm text-gray-500">
+                <Text className="mt-2 text-sm text-app-text-muted">
                   Add your first service so clients know what they can book.
                 </Text>
               </View>
@@ -326,7 +355,7 @@ export default function BarberServices() {
                   service={service}
                   saving={saving}
                   onEdit={() => handleStartEditService(service)}
-                  onDelete={() => handleDeleteService(service.id)}
+                  onDelete={() => openDeleteModal(service)}
                 />
               ))
             )}
@@ -336,46 +365,59 @@ export default function BarberServices() {
             <Pressable
               onPress={handleStartCreateService}
               disabled={saving}
-              className="mb-6 rounded-2xl bg-black px-4 py-4 active:opacity-80"
+              className="mb-6 self-center rounded-2xl bg-app-primary px-4 py-4 active:bg-app-primary-pressed"
+              style={{ width: "68%" }}
             >
-              <Text className="text-center text-base font-bold text-white">
+              <Text className="text-center text-base font-bold text-app-text-inverse">
                 Create New Service
               </Text>
             </Pressable>
           )}
-<Modal
-  visible={showForm}
-  animationType="slide"
-  presentationStyle="fullScreen"
-  onRequestClose={handleCancelForm}
->
-  <ServiceForm
-    editing={!!editingServiceId}
-    saving={saving}
-    serviceName={serviceName}
-    setServiceName={setServiceName}
-    price={price}
-    setPrice={setPrice}
-    durationMinutes={durationMinutes}
-    setDurationMinutes={setDurationMinutes}
-    description={description}
-    setDescription={setDescription}
-    onSave={handleSaveService}
-    onCancel={handleCancelForm}
-  />
-</Modal>
 
-          <Pressable
-            onPress={() => router.back()}
-            disabled={saving}
-            className="mb-10 rounded-2xl border border-gray-300 bg-white px-4 py-4 active:opacity-80"
+          <Modal
+            visible={showForm}
+            animationType="slide"
+            transparent
+            onRequestClose={handleCancelForm}
           >
-            <Text className="text-center text-base font-bold text-black">
-              Back
-            </Text>
-          </Pressable>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              className="flex-1 justify-end"
+              style={{ backgroundColor: "rgba(9, 18, 32, 0.24)" }}
+            >
+              <ServiceForm
+                editing={!!editingServiceId}
+                saving={saving}
+                serviceName={serviceName}
+                setServiceName={setServiceName}
+                price={price}
+                setPrice={setPrice}
+                durationMinutes={durationMinutes}
+                setDurationMinutes={setDurationMinutes}
+                description={description}
+                setDescription={setDescription}
+                onSave={handleSaveService}
+                onCancel={handleCancelForm}
+              />
+            </KeyboardAvoidingView>
+          </Modal>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmDeleteModal
+        visible={deleteModalVisible}
+        title="Delete Service?"
+        detail={
+          serviceToDelete
+            ? `Remove ${serviceToDelete.name || "this service"} from your services?`
+            : "Remove this service from your services?"
+        }
+        confirmLabel="Delete"
+        loadingLabel="Deleting..."
+        loading={saving}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDeleteService}
+      />
     </SafeAreaView>
   );
 }

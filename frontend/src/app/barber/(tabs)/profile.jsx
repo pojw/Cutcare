@@ -1,24 +1,48 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  Pressable,
   ActivityIndicator,
-  ScrollView,
   Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@/components/icons/AppIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 import { auth, db } from "../../../config/firebase";
 
-function InfoRow({ label, value }) {
+const PROFILE_CACHE_KEY_PREFIX = "barberProfileCache";
+const profileMemoryCache = new Map();
+
+function getProfileCacheKey(barberId) {
+  return `${PROFILE_CACHE_KEY_PREFIX}:${barberId}`;
+}
+
+const PAYMENT_OPTION_LABELS = {
+  cash: "Cash",
+  venmo: "Venmo",
+  cash_app: "Cash App",
+  zelle: "Zelle",
+  apple_pay: "Apple Pay",
+  card: "Card",
+};
+
+function InfoRow({ label, value, compact = false }) {
   return (
-    <View className="mb-4">
-      <Text className="mb-1 text-sm font-semibold text-gray-500">{label}</Text>
-      <Text className="text-base font-medium text-black">
+    <View className={compact ? "" : "mb-5"}>
+      <Text className="mb-1 text-sm font-semibold text-app-text-muted">
+        {label}
+      </Text>
+
+      <Text className="text-base font-semibold text-app-text">
         {value === undefined || value === null || value === ""
           ? "Not added yet"
           : String(value)}
@@ -27,60 +51,45 @@ function InfoRow({ label, value }) {
   );
 }
 
-function ListSection({ label, items }) {
-  const safeItems = Array.isArray(items) ? items : [];
-
+function InfoPair({ leftLabel, leftValue, rightLabel, rightValue }) {
   return (
-    <View className="mb-4">
-      <Text className="mb-2 text-sm font-semibold text-gray-500">{label}</Text>
+    <View className="mb-5 flex-row gap-4">
+      <View className="flex-1">
+        <InfoRow label={leftLabel} value={leftValue} compact />
+      </View>
 
-      {safeItems.length === 0 ? (
-        <Text className="text-base text-black">None added yet</Text>
-      ) : (
-        <View className="flex-row flex-wrap gap-2">
-          {safeItems.map((item, index) => (
-            <View
-              key={`${item}-${index}`}
-              className="rounded-full bg-gray-100 px-3 py-2"
-            >
-              <Text className="text-sm font-medium text-black">{item}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+      <View className="flex-1">
+        <InfoRow label={rightLabel} value={rightValue} compact />
+      </View>
     </View>
   );
 }
 
-function ServicesSection({ services }) {
-  const safeServices = Array.isArray(services) ? services : [];
+function PaymentOptionsSection({ acceptedPayments }) {
+  const safePayments = Array.isArray(acceptedPayments)
+    ? acceptedPayments
+    : [];
 
   return (
-    <View className="mb-4">
-      <Text className="mb-2 text-sm font-semibold text-gray-500">Services</Text>
+    <View className="mb-5">
+      <Text className="mb-2 text-sm font-semibold text-app-text-muted">
+        Accepted Payments
+      </Text>
 
-      {safeServices.length === 0 ? (
-        <Text className="text-base text-black">None added yet</Text>
+      {safePayments.length === 0 ? (
+        <Text className="text-base font-semibold text-app-text">
+          Not added yet
+        </Text>
       ) : (
-        <View>
-          {safeServices.map((service, index) => (
+        <View className="flex-row flex-wrap gap-2">
+          {safePayments.map((paymentId) => (
             <View
-              key={service.id || index}
-              className="mb-3 rounded-2xl bg-gray-100 px-4 py-3"
+              key={paymentId}
+              className="rounded-full bg-app-primary-soft px-3 py-2"
             >
-              <Text className="text-base font-bold text-black">
-                {service.name || "Unnamed service"}
+              <Text className="text-sm font-semibold text-app-primary">
+                {PAYMENT_OPTION_LABELS[paymentId] || paymentId}
               </Text>
-
-              <Text className="mt-1 text-sm text-gray-600">
-                ${service.price ?? 0} • {service.durationMinutes ?? 0} min
-              </Text>
-
-              {service.description ? (
-                <Text className="mt-2 text-sm text-gray-500">
-                  {service.description}
-                </Text>
-              ) : null}
             </View>
           ))}
         </View>
@@ -91,181 +100,273 @@ function ServicesSection({ services }) {
 
 export default function BarberProfile() {
   const router = useRouter();
-
   const [userData, setUserData] = useState(null);
   const [barberData, setBarberData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const currentUser = auth.currentUser;
+  const loadCachedProfile = useCallback(async (barberId) => {
+    try {
+      const memoryCache = profileMemoryCache.get(barberId);
 
-        if (!currentUser) {
-          router.replace("/login");
-          return;
-        }
-
-        const userRef = doc(db, "users", currentUser.uid);
-        const barberRef = doc(db, "barbers", currentUser.uid);
-
-        const [userSnap, barberSnap] = await Promise.all([
-          getDoc(userRef),
-          getDoc(barberRef),
-        ]);
-
-        if (!userSnap.exists()) {
-          setErrorMessage("User account data could not be found.");
-          return;
-        }
-
-        if (!barberSnap.exists()) {
-          setErrorMessage("Barber profile data could not be found.");
-          return;
-        }
-
-        setUserData(userSnap.data());
-        setBarberData(barberSnap.data());
-      } catch (error) {
-        console.log("Barber profile load error:", error);
-        setErrorMessage("Something went wrong while loading your profile.");
-      } finally {
-        setLoading(false);
+      if (memoryCache) {
+        setUserData(memoryCache.userData || null);
+        setBarberData(memoryCache.barberData || null);
+        return true;
       }
-    }
 
-    loadProfile();
+      const cachedProfile = await AsyncStorage.getItem(
+        getProfileCacheKey(barberId)
+      );
+
+      if (!cachedProfile) {
+        return false;
+      }
+
+      const parsedCache = JSON.parse(cachedProfile);
+      profileMemoryCache.set(barberId, parsedCache);
+      setUserData(parsedCache.userData || null);
+      setBarberData(parsedCache.barberData || null);
+
+      return true;
+    } catch (error) {
+      console.log("Load cached barber profile error:", error);
+      return false;
+    }
   }, []);
 
-  async function handleLogout() {
+  const saveProfileCache = useCallback(async ({
+    barberId,
+    loadedUserData,
+    loadedBarberData,
+  }) => {
     try {
-      await signOut(auth);
-      router.replace("/login");
+      const cachePayload = {
+        userData: loadedUserData,
+        barberData: loadedBarberData,
+        cachedAt: Date.now(),
+      };
+
+      profileMemoryCache.set(barberId, cachePayload);
+      await AsyncStorage.setItem(
+        getProfileCacheKey(barberId),
+        JSON.stringify(cachePayload)
+      );
     } catch (error) {
-      console.log("Logout error:", error);
+      console.log("Save barber profile cache error:", error);
     }
-  }
+  }, []);
+
+  const loadProfile = useCallback(async ({
+    showLoader = true,
+    useCache = false,
+    showErrorOnFailure = true,
+  } = {}) => {
+    let hasCachedData = false;
+
+    try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        router.replace("/login");
+        return;
+      }
+
+      setErrorMessage("");
+
+      if (useCache) {
+        hasCachedData = await loadCachedProfile(currentUser.uid);
+
+        if (hasCachedData) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (showLoader) {
+        setLoading(true);
+      }
+
+      const userRef = doc(db, "users", currentUser.uid);
+      const barberRef = doc(db, "barbers", currentUser.uid);
+
+      const [userSnap, barberSnap] = await Promise.all([
+        getDoc(userRef),
+        getDoc(barberRef),
+      ]);
+
+      if (!userSnap.exists()) {
+        setErrorMessage("User account data could not be found.");
+        return;
+      }
+
+      if (!barberSnap.exists()) {
+        setErrorMessage("Barber profile data could not be found.");
+        return;
+      }
+
+      const loadedUserData = userSnap.data();
+      const loadedBarberData = barberSnap.data();
+
+      setUserData(loadedUserData);
+      setBarberData(loadedBarberData);
+      await saveProfileCache({
+        barberId: currentUser.uid,
+        loadedUserData,
+        loadedBarberData,
+      });
+    } catch (error) {
+      console.log("Barber profile load error:", error);
+      if (showErrorOnFailure && !hasCachedData) {
+        setErrorMessage("Something went wrong while loading your profile.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [loadCachedProfile, router, saveProfileCache]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.resolve().then(() => {
+      if (!isMounted) {
+        return;
+      }
+
+      loadProfile({
+        useCache: true,
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadProfile]);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      await loadProfile({
+        showLoader: false,
+        showErrorOnFailure: false,
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadProfile]);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
         <ActivityIndicator size="large" />
-        <Text className="mt-4 text-gray-500">Loading profile...</Text>
+        <Text className="mt-4 text-app-text-muted">Loading profile...</Text>
       </SafeAreaView>
     );
   }
 
   if (errorMessage) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-2xl font-bold text-black">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background px-6">
+        <Text className="text-center text-2xl font-bold text-app-text">
           Profile Error
         </Text>
-        <Text className="mt-3 text-center text-base text-gray-500">
+
+        <Text className="mt-3 text-center text-base text-app-text-muted">
           {errorMessage}
         </Text>
 
-        <Pressable
-          onPress={handleLogout}
-          className="mt-8 rounded-2xl bg-black px-6 py-4"
-        >
-          <Text className="font-bold text-white">Log Out</Text>
-        </Pressable>
       </SafeAreaView>
     );
   }
 
+  const profileName =
+    barberData?.businessName ||
+    userData?.fullName ||
+    "Barber";
+  const city = barberData?.location?.city;
+  const state = barberData?.location?.state;
+  const locationText =
+    city && state
+      ? `${city}, ${state}`
+      : city || state || "Location not added";
+  const profileImageUrl =
+    barberData?.profileImageUrl ||
+    userData?.profileImageUrl ||
+    "";
+  const profileInitial = profileName.trim().charAt(0).toUpperCase();
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-app-background">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-6 py-6"
+        contentContainerClassName="px-5 pb-6 pt-4"
         showsVerticalScrollIndicator={false}
-      >
-        <View className="mb-8">
-          <Text className="text-3xl font-bold text-black">Barber Profile</Text>
-          <Text className="mt-2 text-base text-gray-500">
-            Your barber account and business profile information.
-          </Text>
-        </View>
-
-      <View className="mb-6 items-center">
-        {barberData?.profileImageUrl ? (
-  <Image
-    source={{ uri: barberData.profileImageUrl }}
-    className="w-28 h-28 rounded-full "
-  />
-) : (
-  <View className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center">
-    <Text className="text-gray-500">
-      No Photo
-    </Text>
-  </View>
-)}
-      </View>
-        <View className="mb-6 rounded-3xl border border-gray-200 bg-white p-5">
-          <Text className="mb-5 text-xl font-bold text-black">
-            Account Info
-          </Text>
-
-          <InfoRow label="Full Name" value={userData?.fullName} />
-          <InfoRow label="Email" value={userData?.email} />
-          <InfoRow label="Role" value={userData?.role} />
-        </View>
-
-        <View className="mb-6 rounded-3xl border border-gray-200 bg-white p-5">
-          <Text className="mb-5 text-xl font-bold text-black">
-            Barber Details
-          </Text>
-
-          <InfoRow label="Business Name" value={barberData?.businessName} />
-          <InfoRow label="Phone" value={barberData?.phone} />
-          <InfoRow label="Bio" value={barberData?.bio} />
-          <InfoRow label="City" value={barberData?.location?.city} />
-          <InfoRow label="State" value={barberData?.location?.state} />
-
-          <ServicesSection services={barberData?.services} />
-          <ListSection label="Specialties" items={barberData?.specialties} />
-
-          <InfoRow label="Rating" value={barberData?.rating ?? 0} />
-          <InfoRow label="Review Count" value={barberData?.reviewCount ?? 0} />
-          <InfoRow
-            label="Google Calendar Connected"
-            value={barberData?.googleCalendarConnected ? "Yes" : "No"}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#1677FF"
+            colors={["#1677FF"]}
           />
+        }
+      >
+        <View className="mb-8 flex-row items-start justify-between">
+          <Text className="text-3xl font-bold text-app-text">
+            Barber<Text className="text-app-primary">Profile</Text>
+          </Text>
+
+          <Pressable
+            onPress={() => router.push("/barber/settings")}
+            className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+          >
+            <Ionicons
+              name="settings-outline"
+              size={22}
+              color="#1677FF"
+            />
+          </Pressable>
         </View>
 
-        <Pressable
-          onPress={() => router.push("/barber/editProfile")}
-          className="mb-4 rounded-2xl border border-gray-300 bg-white px-4 py-4 active:opacity-80"
-        >
-          <Text className="text-center text-base font-bold text-black">
-            Edit Profile
-          </Text>
-        </Pressable>
+        <View className="mb-8 items-center self-center" style={{ width: "88%" }}>
+          {profileImageUrl ? (
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={{ width: 108, height: 108, borderRadius: 54 }}
+              className="bg-app-surface-elevated"
+            />
+          ) : (
+            <View
+              style={{ width: 108, height: 108, borderRadius: 54 }}
+              className="items-center justify-center bg-app-primary-soft"
+            >
+              <Text className="text-5xl font-bold text-app-primary">
+                {profileInitial}
+              </Text>
+            </View>
+          )}
 
-        <Pressable
-          onPress={() => router.push("/barber/services")}
-          className="mb-4 rounded-2xl border border-gray-300 bg-white px-4 py-4 active:opacity-80"
-        >
-          <Text className="text-center text-base font-bold text-black">
-            Manage Services
+          <Text className="mt-4 text-center text-2xl font-bold text-app-text">
+            {profileName}
           </Text>
-        </Pressable>
-        <Pressable onPress={()=>router.push("/barber/availability")} className="mb-10 rounded-2xl bg-black px-4 py-4 active:opacity-80">
-          <Text className="text-center text-base font-bold text-white">
-            Change Availability
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={handleLogout}
-          className="mb-10 rounded-2xl bg-black px-4 py-4 active:opacity-80">
-          <Text className="text-center text-base font-bold text-white">
-          Log Out
-          </Text>
-        </Pressable>
-      
+        </View>
+
+        <View className="mb-6 self-center" style={{ width: "88%" }}>
+          <InfoPair
+            leftLabel="Full Name"
+            leftValue={userData?.fullName}
+            rightLabel="Phone"
+            rightValue={barberData?.phone}
+          />
+
+          <InfoRow label="Location" value={locationText} />
+
+          <PaymentOptionsSection
+            acceptedPayments={barberData?.acceptedPayments}
+          />
+
+          <InfoRow label="Bio" value={barberData?.bio} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

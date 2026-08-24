@@ -5,11 +5,17 @@ import {
   useMemo,
   useState,
 } from "react";
-import { onAuthStateChanged } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
 import { auth, db } from "../config/firebase";
-
+import {
+  registerCurrentDeviceForPushNotifications,
+  disableCurrentDevicePushToken,
+} from "../services/pushNotificationService";
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -53,6 +59,23 @@ export function AuthProvider({ children }) {
         }
 
         await refreshUserData(firebaseUser);
+
+        try {
+          const token =
+            await registerCurrentDeviceForPushNotifications(
+              firebaseUser.uid
+            );
+
+          console.log(
+            "Push notification device registered:",
+            token
+          );
+        } catch (pushError) {
+          console.log(
+            "Push notification registration skipped:",
+            pushError.message
+          );
+        }
       } catch (error) {
         console.log("Auth restoration error:", error);
         setUserData(null);
@@ -63,17 +86,36 @@ export function AuthProvider({ children }) {
 
     return unsubscribe;
   }, []);
+async function logout() {
+  const currentUser = auth.currentUser;
 
-  const value = useMemo(
-    () => ({
-      user,
-      userData,
-      authLoading,
-      isAuthenticated: Boolean(user),
-      refreshUserData,
-    }),
-    [user, userData, authLoading]
-  );
+  if (currentUser) {
+    try {
+      await disableCurrentDevicePushToken(
+        currentUser.uid
+      );
+    } catch (error) {
+      console.log(
+        "Push token could not be disabled:",
+        error.message
+      );
+    }
+  }
+
+  await signOut(auth);
+}
+const value = useMemo(
+  () => ({
+    user,
+    userData,
+    authLoading,
+    isAuthenticated: Boolean(user),
+    isGuest: Boolean(user?.isAnonymous || userData?.isGuest),
+    refreshUserData,
+    logout,
+  }),
+  [user, userData, authLoading]
+);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -3,3 +3,7 @@ uvicorn[standard]
 python-dotenv
 pydantic
 firebase-admin
+openai
+pillow
+opencv-python-headless==4.11.0.86
+numpy==2.2.6

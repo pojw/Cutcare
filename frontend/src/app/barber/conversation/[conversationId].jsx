@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback } from "react";
 import {
   View,
   Text,
@@ -8,23 +12,47 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
+import { Ionicons } from "@/components/icons/AppIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter,useFocusEffect } from "expo-router";
+import { useAppAlert } from "../../../context/AppAlertContext";
 
 import { auth } from "../../../config/firebase";
 import {
   getConversationById,
-  listenToConversationMessages,
-  sendMessage,
+  getOlderConversationMessages,
+  listenToRecentConversationMessages,
+  sendMessage, markConversationRead,
 } from "../../../services/messageService";
+import {
+  markConversationNotificationsRead,
+} from "../../../services/notificationService";
+
+function mergeMessages(firstMessages, secondMessages) {
+  const messageMap = new Map();
+
+  [...firstMessages, ...secondMessages].forEach((message) => {
+    messageMap.set(message.id, message);
+  });
+
+  return Array.from(messageMap.values()).sort((a, b) => {
+    const aTime = a.createdAt?.toMillis?.() || 0;
+    const bTime = b.createdAt?.toMillis?.() || 0;
+
+    return aTime - bTime;
+  });
+}
 
 export default function BarberConversationScreen() {
+  const { showAppAlert } = useAppAlert();
   const router = useRouter();
   const { conversationId } = useLocalSearchParams();
 
   const listRef = useRef(null);
+  const oldestMessageDocRef = useRef(null);
+  const hasLoadedOlderMessagesRef = useRef(false);
+  const shouldScrollToBottomRef = useRef(false);
 
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -32,11 +60,39 @@ export default function BarberConversationScreen() {
   const [messageText, setMessageText] = useState("");
 
   const [loading, setLoading] = useState(true);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const currentUser = auth.currentUser;
+useFocusEffect(
+  useCallback(() => {
+    if (
+      !currentUser?.uid ||
+      !conversationId ||
+      Array.isArray(conversationId)
+    ) {
+      return;
+    }
 
+    Promise.all([
+      markConversationRead(
+        conversationId,
+        currentUser.uid
+      ),
+      markConversationNotificationsRead(
+        currentUser.uid,
+        conversationId
+      ),
+    ]).catch((error) => {
+      console.log(
+        "Mark barber conversation and notifications read error:",
+        error
+      );
+    });
+  }, [conversationId, currentUser?.uid])
+);
   useEffect(() => {
     async function loadConversation() {
       try {
@@ -75,42 +131,126 @@ export default function BarberConversationScreen() {
     }
 
     loadConversation();
-  }, [conversationId]);
+  }, [conversationId, currentUser]);
 
   useEffect(() => {
     if (!conversationId || Array.isArray(conversationId)) {
       return;
     }
 
-    const unsubscribe = listenToConversationMessages(
-      conversationId,
-      (loadedMessages) => {
-        setMessages(loadedMessages);
+    oldestMessageDocRef.current = null;
+    hasLoadedOlderMessagesRef.current = false;
 
-        setTimeout(() => {
-          listRef.current?.scrollToEnd({ animated: true });
-        }, 100);
-      },
+    const resetTimer = setTimeout(() => {
+      setMessages([]);
+      setHasMoreMessages(false);
+    }, 0);
+
+    const unsubscribe = listenToRecentConversationMessages(
+      conversationId,
+  (loadedMessages, pageInfo) => {
+  shouldScrollToBottomRef.current = true;
+
+  setMessages((currentMessages) =>
+    mergeMessages(currentMessages, loadedMessages)
+  );
+
+  if (!hasLoadedOlderMessagesRef.current) {
+    oldestMessageDocRef.current = pageInfo.oldestDoc;
+    setHasMoreMessages(pageInfo.hasMore);
+  }
+
+  const latestMessage =
+    loadedMessages[loadedMessages.length - 1];
+
+  if (
+    currentUser?.uid &&
+    latestMessage &&
+    latestMessage.senderId !== currentUser.uid
+  ) {
+    Promise.all([
+      markConversationRead(
+        conversationId,
+        currentUser.uid
+      ),
+      markConversationNotificationsRead(
+        currentUser.uid,
+        conversationId
+      ),
+    ]).catch((error) => {
+      console.log(
+        "Mark incoming barber message and notification read error:",
+        error
+      );
+    });
+  }
+
+  setTimeout(() => {
+    listRef.current?.scrollToEnd({
+      animated: true,
+    });
+  }, 100);
+},
       (error) => {
         console.log("Listen to barber messages error:", error);
         setErrorMessage("Failed to load messages.");
       }
     );
 
-    return () => unsubscribe();
-  }, [conversationId]);
+    return () => {
+      clearTimeout(resetTimer);
+      unsubscribe();
+    };
+  }, [conversationId,currentUser?.uid]);
+
+  async function handleLoadOlderMessages() {
+    if (
+      loadingOlderMessages ||
+      !hasMoreMessages ||
+      !oldestMessageDocRef.current ||
+      !conversationId ||
+      Array.isArray(conversationId)
+    ) {
+      return;
+    }
+
+    try {
+      setLoadingOlderMessages(true);
+      shouldScrollToBottomRef.current = false;
+
+      const olderPage = await getOlderConversationMessages({
+        conversationId,
+        oldestMessageDoc: oldestMessageDocRef.current,
+      });
+
+      if (olderPage.messages.length > 0) {
+        hasLoadedOlderMessagesRef.current = true;
+        oldestMessageDocRef.current = olderPage.oldestDoc;
+        setMessages((currentMessages) =>
+          mergeMessages(olderPage.messages, currentMessages)
+        );
+      }
+
+      setHasMoreMessages(olderPage.hasMore);
+    } catch (error) {
+      console.log("Load older barber messages error:", error);
+      setErrorMessage("Failed to load older messages.");
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }
 
   async function handleSendMessage() {
     try {
       const trimmedText = messageText.trim();
 
       if (!currentUser) {
-        Alert.alert("Login required", "You must be logged in to send messages.");
+        showAppAlert("Login required", "You must be logged in to send messages.");
         return;
       }
 
       if (!conversationId || Array.isArray(conversationId)) {
-        Alert.alert("Missing conversation", "Could not find this conversation.");
+        showAppAlert("Missing conversation", "Could not find this conversation.");
         return;
       }
 
@@ -134,7 +274,7 @@ export default function BarberConversationScreen() {
       setMessageText("");
     } catch (error) {
       console.log("Send barber message error:", error);
-      Alert.alert("Message failed", "Could not send your message.");
+      showAppAlert("Message failed", "Could not send your message.");
     } finally {
       setSending(false);
     }
@@ -147,16 +287,20 @@ export default function BarberConversationScreen() {
       <View
         style={{
           alignSelf: isMyMessage ? "flex-end" : "flex-start",
-          backgroundColor: isMyMessage ? "#000000" : "#f3f4f6",
           maxWidth: "80%",
         }}
-        className="mb-3 rounded-2xl px-4 py-3"
+        className={
+          isMyMessage
+            ? "mb-3 rounded-2xl bg-app-primary px-4 py-3"
+            : "mb-3 rounded-2xl border border-app-border bg-app-surface px-4 py-3"
+        }
       >
         <Text
-          style={{
-            color: isMyMessage ? "#ffffff" : "#000000",
-          }}
-          className="text-base"
+          className={
+            isMyMessage
+              ? "text-base text-app-text-inverse"
+              : "text-base text-app-text"
+          }
         >
           {item.text}
         </Text>
@@ -166,10 +310,10 @@ export default function BarberConversationScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
         <ActivityIndicator size="large" />
 
-        <Text className="mt-4 text-gray-500">
+        <Text className="mt-4 text-app-text-muted">
           Loading conversation...
         </Text>
       </SafeAreaView>
@@ -178,47 +322,56 @@ export default function BarberConversationScreen() {
 
   if (errorMessage || !conversation) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-2xl font-bold text-black">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background px-6">
+        <Text className="text-center text-2xl font-bold text-app-text">
           Conversation Not Found
         </Text>
 
-        <Text className="mt-3 text-center text-base text-gray-500">
+        <Text className="mt-3 text-center text-base text-app-text-muted">
           {errorMessage || "This conversation could not be loaded."}
         </Text>
 
         <Pressable
           onPress={() => router.back()}
-          className="mt-8 rounded-2xl bg-black px-6 py-4"
+          className="mt-8 rounded-2xl bg-app-primary px-6 py-4 active:bg-app-primary-pressed"
         >
-          <Text className="font-bold text-white">Go Back</Text>
+          <Text className="font-bold text-app-text-inverse">Go Back</Text>
         </Pressable>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-app-background">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
       >
-        <View className="border-b border-gray-200 px-5 py-4">
-          <Pressable
-            onPress={() => router.back()}
-            className="mb-3 self-start rounded-xl bg-gray-100 px-4 py-2"
-          >
-            <Text className="font-semibold text-black">Back</Text>
-          </Pressable>
+        <View className="border-b border-app-border-subtle bg-app-background px-6 py-6">
+          <View className="flex-row items-center">
+            <Pressable
+              onPress={() => router.back()}
+              className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+            >
+              <Ionicons
+                name="arrow-back"
+                size={24}
+                color="#1677FF"
+              />
+            </Pressable>
 
-          <Text className="text-xl font-bold text-black">
-            {conversation.clientName || "Client"}
-          </Text>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              className="flex-1 text-center text-2xl font-bold text-app-text"
+            >
+              {conversation.clientName || "Client"}
+            </Text>
 
-          <Text className="mt-1 text-sm text-gray-500">
-            Client conversation
-          </Text>
+            <View className="h-11 w-11" />
+          </View>
         </View>
 
         <FlatList
@@ -226,41 +379,56 @@ export default function BarberConversationScreen() {
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerClassName="flex-grow px-5 py-4"
+          contentContainerClassName="flex-grow px-4 py-5"
+          ListHeaderComponent={
+            loadingOlderMessages ? (
+              <View className="items-center pb-3">
+                <ActivityIndicator size="small" />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View className="flex-1 items-center justify-center px-6">
-              <Text className="text-center text-base text-gray-500">
+              <Text className="text-center text-base text-app-text-muted">
                 No messages yet.
               </Text>
             </View>
           }
           onContentSizeChange={() => {
-            listRef.current?.scrollToEnd({ animated: true });
+            if (shouldScrollToBottomRef.current) {
+              shouldScrollToBottomRef.current = false;
+              listRef.current?.scrollToEnd({ animated: true });
+            }
           }}
+          onScroll={({ nativeEvent }) => {
+            if (nativeEvent.contentOffset.y <= 24) {
+              handleLoadOlderMessages();
+            }
+          }}
+          scrollEventThrottle={16}
         />
 
-        <View className="border-t border-gray-200 px-4 py-3">
-          <View className="flex-row items-end rounded-2xl bg-gray-100 px-4 py-2">
+        <View className="border-t border-app-border-subtle bg-app-background px-4 pb-8 pt-3">
+          <View className="flex-row items-end gap-2">
             <TextInput
               value={messageText}
               onChangeText={setMessageText}
               placeholder="Type a message..."
+              placeholderTextColor="#8292A6"
               multiline
-              className="max-h-28 flex-1 py-2 text-base text-black"
+              className="max-h-32 min-h-12 flex-1 rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
             />
 
             <Pressable
               onPress={handleSendMessage}
               disabled={sending || !messageText.trim()}
-              style={{
-                backgroundColor:
-                  sending || !messageText.trim()
-                    ? "#d1d5db"
-                    : "#000000",
-              }}
-              className="ml-3 rounded-xl px-4 py-3"
+              className={
+                sending || !messageText.trim()
+                  ? "h-12 justify-center rounded-2xl bg-app-disabled px-4"
+                  : "h-12 justify-center rounded-2xl bg-app-primary px-4 active:bg-app-primary-pressed"
+              }
             >
-              <Text className="font-bold text-white">
+              <Text className="font-semibold text-app-text-inverse">
                 {sending ? "..." : "Send"}
               </Text>
             </Pressable>

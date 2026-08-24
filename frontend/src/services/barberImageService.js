@@ -24,10 +24,14 @@ import {
 
 import {File} from "expo-file-system";
 
-export async function pickImage(){
+export async function pickImage({
+    aspect,
+    allowsEditing = true,
+} = {}){
     const results = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
-        allowsEditing: true, 
+        allowsEditing,
+        ...(aspect ? { aspect } : {}),
         quality: 1,     
     });
     if(results.canceled){

@@ -1,18 +1,25 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "CutCare",
+    "slug": "cutcare",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontend",
+    "scheme": "cutcare",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jaylinhernandez.cutcare",
+      "buildNumber": "1",
+      "icon": "./assets/images/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.jaylinhernandez.cutcare",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0067F5",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -34,23 +41,34 @@
             "imageWidth": 76
           }
         }
-        
       ],
       [
-  "expo-image-picker",
-  {
-    "photosPermission": "Allow BarberApp to access your photos so you can upload profile and portfolio images.",
-    "microphonePermission": false,
-        "cameraPermission": false
-
-  }
-]
-      
-
+        "expo-image-picker",
+        {
+          "photosPermission": "CutCare uses your photo library so you can choose profile, portfolio, and Hair Profile photos for app functionality and personalized hair guidance.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-image",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4a8b4696-1f47-48bb-9b19-e9c64bb58df5"
+      }
+    },
+    "owner": "pojwreal1",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4a8b4696-1f47-48bb-9b19-e9c64bb58df5"
     }
   }
 }

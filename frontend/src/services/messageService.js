@@ -4,16 +4,21 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  limitToLast,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   setDoc,
+  startAfter,
   updateDoc,
   where,
 } from "firebase/firestore";
 
 import { db } from "../config/firebase";
+
+export const MESSAGE_PAGE_SIZE = 20;
 
 
 
@@ -27,6 +32,8 @@ export async function getOrCreateConversation({
   clientName,
   barberName,
   businessName,
+  barberProfileImageUrl,
+  clientProfileImageUrl,
 }) {
   if (!clientId || !barberId) {
     throw new Error("Missing clientId or barberId.");
@@ -38,9 +45,31 @@ export async function getOrCreateConversation({
   const conversationSnap = await getDoc(conversationRef);
 
   if (conversationSnap.exists()) {
+    const existingConversation = conversationSnap.data();
+    const imageUpdates = {};
+
+    if (
+      barberProfileImageUrl &&
+      existingConversation.barberProfileImageUrl !== barberProfileImageUrl
+    ) {
+      imageUpdates.barberProfileImageUrl = barberProfileImageUrl;
+    }
+
+    if (
+      clientProfileImageUrl &&
+      existingConversation.clientProfileImageUrl !== clientProfileImageUrl
+    ) {
+      imageUpdates.clientProfileImageUrl = clientProfileImageUrl;
+    }
+
+    if (Object.keys(imageUpdates).length > 0) {
+      await updateDoc(conversationRef, imageUpdates);
+    }
+
     return {
       id: conversationSnap.id,
-      ...conversationSnap.data(),
+      ...existingConversation,
+      ...imageUpdates,
     };
   }
 
@@ -53,6 +82,8 @@ export async function getOrCreateConversation({
     clientName: clientName || "Client",
     barberName: barberName || "Barber",
     businessName: businessName || "",
+    barberProfileImageUrl: barberProfileImageUrl || "",
+    clientProfileImageUrl: clientProfileImageUrl || "",
 
     lastMessage: "",
     lastMessageAt: null,
@@ -103,11 +134,16 @@ export async function sendMessage({
     createdAt: serverTimestamp(),
   });
 
-  const conversationRef = doc(db, "conversations", conversationId);
+  const conversationRef = doc(
+    db,
+    "conversations",
+    conversationId
+  );
 
   await updateDoc(conversationRef, {
     lastMessage: trimmedText,
     lastMessageAt: serverTimestamp(),
+    lastMessageSenderId: senderId,
     updatedAt: serverTimestamp(),
   });
 }
@@ -216,4 +252,116 @@ export function listenToConversationMessages(
       }
     }
   );
+}
+
+export function listenToRecentConversationMessages(
+  conversationId,
+  callback,
+  errorCallback,
+  pageSize = MESSAGE_PAGE_SIZE
+) {
+  if (!conversationId) {
+    throw new Error("Missing conversationId.");
+  }
+
+  const messagesRef = collection(
+    db,
+    "conversations",
+    conversationId,
+    "messages"
+  );
+
+  const q = query(
+    messagesRef,
+    orderBy("createdAt", "asc"),
+    limitToLast(pageSize)
+  );
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const messages = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      }));
+
+      callback(messages, {
+        oldestDoc: snapshot.docs[0] || null,
+        hasMore: snapshot.docs.length === pageSize,
+      });
+    },
+    (error) => {
+      if (errorCallback) {
+        errorCallback(error);
+      }
+    }
+  );
+}
+
+export async function getOlderConversationMessages({
+  conversationId,
+  oldestMessageDoc,
+  pageSize = MESSAGE_PAGE_SIZE,
+}) {
+  if (!conversationId) {
+    throw new Error("Missing conversationId.");
+  }
+
+  if (!oldestMessageDoc) {
+    return {
+      messages: [],
+      oldestDoc: null,
+      hasMore: false,
+    };
+  }
+
+  const messagesRef = collection(
+    db,
+    "conversations",
+    conversationId,
+    "messages"
+  );
+
+  const q = query(
+    messagesRef,
+    orderBy("createdAt", "desc"),
+    startAfter(oldestMessageDoc),
+    limit(pageSize)
+  );
+
+  const snapshot = await getDocs(q);
+  const messages = snapshot.docs
+    .map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    }))
+    .reverse();
+
+  return {
+    messages,
+    oldestDoc: snapshot.docs[snapshot.docs.length - 1] || null,
+    hasMore: snapshot.docs.length === pageSize,
+  };
+}
+
+
+export async function markConversationRead(
+  conversationId,
+  userId
+) {
+  if (!conversationId || !userId) {
+    throw new Error(
+      "conversationId and userId are required to mark a conversation as read."
+    );
+  }
+
+  const conversationRef = doc(
+    db,
+    "conversations",
+    conversationId
+  );
+
+  await updateDoc(conversationRef, {
+    [`readState.${userId}`]: serverTimestamp(),
+  });
 }

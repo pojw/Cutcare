@@ -52,27 +52,49 @@ export async function getBookingsForBarber(barberId) {
     ...bookingDoc.data(),
   }));
 }
-async function updateBookingStatus(bookingId, newStatus) {
+async function updateBookingStatus(
+  bookingId,
+  newStatus,
+  changedBy = null
+) {
   if (!bookingId) {
     throw new Error("Booking ID is required.");
   }
 
   const bookingRef = doc(db, "bookings", bookingId);
 
-  await updateDoc(bookingRef, {
+  const updates = {
     status: newStatus,
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  if (newStatus === "cancelled") {
+    if (!changedBy) {
+      throw new Error(
+        "The cancelling user ID is required."
+      );
+    }
+
+    updates.cancelledBy = changedBy;
+  }
+  await updateDoc(bookingRef, updates);
 }
 
 export async function confirmBooking(bookingId) {
   return updateBookingStatus(bookingId, "confirmed");
 }
 
-export async function cancelBooking(bookingId) {
-  return updateBookingStatus(bookingId, "cancelled");
-}
 
+export async function cancelBooking(
+  bookingId,
+  cancelledBy
+) {
+  return updateBookingStatus(
+    bookingId,
+    "cancelled",
+    cancelledBy
+  );
+}
 export async function completeBooking(bookingId) {
   return updateBookingStatus(bookingId, "completed");
 }

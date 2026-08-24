@@ -1,10 +1,69 @@
 import { useEffect, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+} from "react-native";
+import { Ionicons } from "@/components/icons/AppIcon";
 import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import CenterScreen from "../../../components/centerScreen";
 import { auth } from "../../../config/firebase";
 import { getActiveHairProfile } from "../../../services/hairProfileService";
+
+function HairProfileHeader({ onBack }) {
+  return (
+    <View className="mb-6 flex-row items-center">
+      <Pressable
+        onPress={onBack}
+        className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+      >
+        <Ionicons name="arrow-back" size={24} color="#1677FF" />
+      </Pressable>
+
+      <Text className="flex-1 text-center text-3xl font-bold text-app-text">
+        Hair<Text className="text-app-primary">Profile</Text>
+      </Text>
+
+      <View className="h-11 w-11" />
+    </View>
+  );
+}
+
+function LengthGuide() {
+  return (
+    <View className="mb-3 rounded-2xl bg-app-surface-elevated px-4 py-4">
+      <Text className="text-sm font-semibold text-app-text-muted">
+        Length Guide
+      </Text>
+
+      <Text className="mt-1 text-base font-medium text-app-text">
+        Short: 1-3 inches, Medium: 3-6 inches, Long: 6+ inches
+      </Text>
+    </View>
+  );
+}
+
+function formatLengthValue(value) {
+  if (value === undefined || value === null || value === "") {
+    return value;
+  }
+
+  const normalizedValue = String(value).toLowerCase();
+
+  const lengthRanges = {
+    very_short: "Very Short (<1 inch)",
+    short: "Short (1-3 inches)",
+    medium: "Medium (3-6 inches)",
+    long: "Long (6+ inches)",
+    very_long: "Very Long (6+ inches)",
+  };
+
+  return lengthRanges[normalizedValue] ?? String(value);
+}
+
 export default function HairProfileIndex() {
   const router = useRouter();
 
@@ -40,48 +99,44 @@ export default function HairProfileIndex() {
   }
   if (loading) {
   return (
-    <CenterScreen>
+    <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
       <ActivityIndicator />
-      <Text className="mt-3 text-gray-600">
+      <Text className="mt-3 text-app-text-muted">
         Loading hair profile...
       </Text>
-    </CenterScreen>
+    </SafeAreaView>
   );
 }
 if (errorMessage) {
   return (
-    <CenterScreen>
-      <View className="w-full px-6">
-        <Text className="text-2xl font-bold text-gray-900">
-          Hair Profile
-        </Text>
+    <SafeAreaView className="flex-1 bg-app-background">
+      <View className="flex-1 px-6 py-6">
+        <HairProfileHeader onBack={() => router.back()} />
 
-        <Text className="mt-3 text-gray-600">
+        <Text className="mt-3 text-app-text-muted">
           {errorMessage}
         </Text>
 
         <Pressable
           onPress={loadActiveProfile}
-          className="mt-6 rounded-2xl bg-black px-5 py-4"
+          className="mt-6 rounded-2xl bg-app-primary px-5 py-4 active:bg-app-primary-pressed"
         >
-          <Text className="text-center font-semibold text-white">
+          <Text className="text-center font-semibold text-app-text-inverse">
             Try Again
           </Text>
         </Pressable>
       </View>
-    </CenterScreen>
+    </SafeAreaView>
   );
 }
 if (!profile) {
   return (
-    <CenterScreen>
-      <View className="w-full px-6">
-        <View className="rounded-3xl border border-gray-100 bg-white p-6">
-          <Text className="text-3xl font-bold text-gray-900">
-            Hair Profile
-          </Text>
+    <SafeAreaView className="flex-1 bg-app-background">
+      <View className="flex-1 px-6 py-6">
+        <HairProfileHeader onBack={() => router.back()} />
 
-          <Text className="mt-3 text-base leading-6 text-gray-600">
+        <View className="rounded-3xl bg-app-surface p-6">
+          <Text className="text-base leading-6 text-app-text-secondary">
             Analyze your current hair so BarberApp can give better haircut
             recommendations based on your current hair and style goals.
           </Text>
@@ -90,9 +145,9 @@ if (!profile) {
             onPress={() =>
               router.push("/client/hairProfile/uploadProfile")
             }
-            className="mt-6 rounded-2xl bg-green-500 px-5 py-4"
+            className="mt-6 rounded-2xl bg-app-primary px-5 py-4 active:bg-app-primary-pressed"
           >
-            <Text className="text-center text-base font-bold text-white">
+            <Text className="text-center text-base font-bold text-app-text-inverse">
               Start Hair Analysis
             </Text>
           </Pressable>
@@ -100,57 +155,57 @@ if (!profile) {
         
       </View>
       
-    </CenterScreen>
+    </SafeAreaView>
   );
 }
 const confirmedProfile = profile.confirmedProfile;
+const profileId = profile.id ?? profile.profileId;
+
 return (
-  <CenterScreen>
+  <SafeAreaView className="flex-1 bg-app-background">
     <ScrollView
-      className="w-full"
+      className="flex-1"
       contentContainerStyle={{
         paddingHorizontal: 24,
         paddingVertical: 24,
       }}
       showsVerticalScrollIndicator={false}
     >
-      <Text className="text-3xl font-bold text-gray-900">
-        Your Hair Profile
-      </Text>
+      <HairProfileHeader onBack={() => router.back()} />
 
-      <Text className="mt-2 text-base leading-6 text-gray-600">
-        This profile is used to improve your haircut recommendations.
-      </Text>
+      <View>
+        <LengthGuide />
 
-      <View className="mt-6 rounded-3xl border border-gray-200 bg-white p-5">
-        <ProfileRow
-          label="Overall Length"
-          value={confirmedProfile?.overallLengthCategory}
+        <ProfileRowPair
+          leftLabel="Overall Length"
+          leftValue={formatLengthValue(
+            confirmedProfile?.overallLengthCategory
+          )}
+          rightLabel="Texture"
+          rightValue={confirmedProfile?.texture}
         />
 
-        <ProfileRow
-          label="Front Length"
-          value={confirmedProfile?.frontLengthInches}
+        <ProfileRowPair
+          leftLabel="Front Length"
+          leftValue={formatLengthValue(
+            confirmedProfile?.frontLengthInches ||
+              confirmedProfile?.frontLengthCategory
+          )}
+          rightLabel="Side Length"
+          rightValue={formatLengthValue(
+            confirmedProfile?.sideLengthInches ||
+              confirmedProfile?.sideLengthCategory
+          )}
         />
 
-        <ProfileRow
-          label="Side Length"
-          value={confirmedProfile?.sideLengthInches}
-        />
-
-        <ProfileRow
-          label="Back Length"
-          value={confirmedProfile?.backLengthInches}
-        />
-
-        <ProfileRow
-          label="Texture"
-          value={confirmedProfile?.texture}
-        />
-
-        <ProfileRow
-          label="Density"
-          value={confirmedProfile?.density}
+        <ProfileRowPair
+          leftLabel="Back Length"
+          leftValue={formatLengthValue(
+            confirmedProfile?.backLengthInches ||
+              confirmedProfile?.backLengthCategory
+          )}
+          rightLabel="Face Shape"
+          rightValue={confirmedProfile?.faceShape}
         />
 
         <ProfileRow
@@ -159,67 +214,101 @@ return (
         />
 
         <ProfileRow
-          label="Face Shape"
-          value={confirmedProfile?.faceShape}
-        />
-
-        <ProfileRow
           label="Facial Hair"
           value={confirmedProfile?.facialHair}
         />
 
         <ProfileRow
-          label="Fade or Taper"
+          label="Current Hairstyle"
           value={
-            confirmedProfile?.hasFadeOrTaper === true
-              ? "Yes"
-              : confirmedProfile?.hasFadeOrTaper === false
-                ? "No"
-                : null
+            confirmedProfile?.currentHairstyle ||
+            confirmedProfile?.fadeType
           }
         />
-
-        <ProfileRow
-          label="Fade Type"
-          value={confirmedProfile?.fadeType}
-        />
-
-        <ProfileRow
-          label="Neckline"
-          value={confirmedProfile?.neckline}
-        />
-
-        <ProfileRow
-          label="Ear Coverage"
-          value={confirmedProfile?.earCoverage}
-        />
       </View>
+
       <Pressable
-  onPress={() => router.replace("/client/hairProfile/uploadProfile")}
-  className="mt-6 rounded-2xl border border-gray-300 px-5 py-4"
->
-  <Text className="text-center font-semibold text-gray-800">
-    Analyze Again
-  </Text>
-</Pressable>
+        onPress={() =>
+          router.push({
+            pathname: "/client/hairProfile/results",
+            params: {
+              profileId,
+            },
+          })
+        }
+        disabled={!profileId}
+        className={`mt-6 rounded-2xl px-5 py-4 ${
+          profileId
+            ? "bg-app-primary active:bg-app-primary-pressed"
+            : "bg-app-disabled"
+        }`}
+      >
+        <Text className="text-center text-base font-bold text-app-text-inverse">
+          Edit
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.replace("/client/hairProfile/uploadProfile")}
+        className="mt-3 rounded-2xl border border-app-border bg-app-surface px-5 py-4 active:bg-app-surface-elevated"
+      >
+        <Text className="text-center font-semibold text-app-text">
+          Analyze Again
+        </Text>
+      </Pressable>
     </ScrollView>
-  </CenterScreen>
+  </SafeAreaView>
 );
 }
 
 
 function ProfileRow({ label, value }) {
   return (
-    <View className="border-b border-gray-100 py-4">
-      <Text className="text-sm font-semibold text-gray-500">
+    <View className="mb-3 rounded-2xl bg-app-surface-elevated px-4 py-4">
+      <Text className="text-sm font-semibold text-app-text-muted">
         {label}
       </Text>
 
-      <Text className="mt-1 text-base font-medium text-gray-900">
+      <Text className="mt-1 text-base font-medium text-app-text">
         {value === undefined || value === null || value === ""
           ? "Not provided"
           : String(value)}
       </Text>
+    </View>
+  );
+}
+
+function ProfileRowPair({
+  leftLabel,
+  leftValue,
+  rightLabel,
+  rightValue,
+}) {
+  return (
+    <View className="mb-3 flex-row gap-3">
+      <View className="flex-1 rounded-2xl bg-app-surface-elevated px-4 py-4">
+        <Text className="text-sm font-semibold text-app-text-muted">
+          {leftLabel}
+        </Text>
+
+        <Text className="mt-1 text-base font-medium text-app-text">
+          {leftValue === undefined || leftValue === null || leftValue === ""
+            ? "Not provided"
+            : String(leftValue)}
+        </Text>
+      </View>
+
+      <View className="flex-1 rounded-2xl bg-app-surface-elevated px-4 py-4">
+        <Text className="text-sm font-semibold text-app-text-muted">
+          {rightLabel}
+        </Text>
+
+        <Text className="mt-1 text-base font-medium text-app-text">
+          {rightValue === undefined || rightValue === null || rightValue === ""
+            ? "Not provided"
+            : String(rightValue)}
+        </Text>
+      </View>
     </View>
   );
 }

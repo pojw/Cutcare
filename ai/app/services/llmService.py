@@ -71,30 +71,18 @@ def clean_llm_response(text: str) -> str:
 def generate_llm_response(
     messages: list[dict[str, str]],
 ) -> str:
-    if not settings.HF_TOKEN:
+    if not settings.OPENAI_API_KEY:
         raise LLMConfigurationError(
-            "HF_TOKEN is not configured."
+            "OPENAI_API_KEY is not configured."
         )
 
-    client = OpenAI(
-        base_url=settings.HF_BASE_URL,
-        api_key=settings.HF_TOKEN,
-        timeout=60.0,
-    )
+    client = create_llm_client()
 
     try:
         completion = client.chat.completions.create(
-            model=settings.HF_MODEL,
+            model=settings.OPENAI_MODEL,
             messages=messages,
-            temperature=0.7,
-            top_p=0.5,
-            max_tokens=180,
-            extra_body={
-                "top_k": 20,
-                "chat_template_kwargs": {
-                    "enable_thinking": False,
-                },
-            },
+            max_completion_tokens=180,
         )
 
     except APITimeoutError as exc:
@@ -169,3 +157,15 @@ def generate_llm_response(
         )
 
     return cleaned_text
+
+def create_llm_client() -> OpenAI:
+    if not settings.OPENAI_API_KEY:
+        raise LLMConfigurationError(
+            "OPENAI_API_KEY is not configured."
+        )
+
+    return OpenAI(
+        base_url=settings.OPENAI_BASE_URL,
+        api_key=settings.OPENAI_API_KEY,
+        timeout=60.0,
+    )

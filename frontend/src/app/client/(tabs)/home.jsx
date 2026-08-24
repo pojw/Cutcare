@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState ,useEffect} from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -6,10 +6,14 @@ import {
   View,
   Pressable,
   Modal,
-  TextInput
+  TextInput,
+  Image,
+  RefreshControl
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {useRouter, useFocusEffect } from "expo-router";
+import {router} from "expo-router";
+import { Ionicons } from "@/components/icons/AppIcon";
 import {
   collection,
   doc,
@@ -17,18 +21,55 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
-  addDoc,
-  deleteDoc,
-serverTimestamp,
-updateDoc
 } from "firebase/firestore";
-
+import {
+  createClientNote,
+  deleteClientNote,
+  getClientNotes,
+  setClientNoteFavorite,
+  updateClientNote,
+} from "../../../services/clientNotesService";
+import {
+  listenToUnreadNotificationCount,
+} from "../../../services/notificationService";
+import AccountRequiredModal from "../../../components/AccountRequiredModal";
 import { auth, db } from "../../../config/firebase";
 import {
   isUpcomingOrToday,
   sortBookingsByDateTime,
 } from "../../../utils/dateHelpers";
+
+const HOME_CACHE_KEY_PREFIX = "clientHomeCache";
+const homeMemoryCache = new Map();
+
+function getHomeCacheKey(uid) {
+  return `${HOME_CACHE_KEY_PREFIX}:${uid}`;
+}
+
+async function updateHomeCache(uid, updates) {
+  try {
+    const cachedHomeData = await AsyncStorage.getItem(
+      getHomeCacheKey(uid)
+    );
+    const storedCache = cachedHomeData
+      ? JSON.parse(cachedHomeData)
+      : {};
+    const nextCache = {
+      ...storedCache,
+      ...(homeMemoryCache.get(uid) || {}),
+      ...updates,
+      cachedAt: Date.now(),
+    };
+
+    homeMemoryCache.set(uid, nextCache);
+    await AsyncStorage.setItem(
+      getHomeCacheKey(uid),
+      JSON.stringify(nextCache)
+    );
+  } catch (err) {
+    console.log("Update client home cache error:", err);
+  }
+}
 
 async function getLocalBarbers() {
   const barbersRef = collection(db, "barbers");
@@ -40,27 +81,163 @@ async function getLocalBarbers() {
     ...barberDoc.data(),
   }));
 }
-
-function HomeHeader({ displayName }) {
+function AiChatSection({ onPress }) {
   return (
-    <View className="flex-row items-center justify-between">
-      <View>
-        <Text className="text-sm text-gray-500">
-          Welcome back
-        </Text>
+    <Pressable
+      onPress={onPress}
+      className="mr-2 px-4 py-3 items-center justify-center rounded-xl bg-app-primary active:bg-app-primary-pressed"
+    >
+      <Text className="text-center  text-sm font-bold text-app-text-inverse">
+        AI Hair Assistant
+      </Text>
+    </Pressable>
+  );
+}
 
-        <Text className="text-2xl font-bold text-gray-900">
-          {displayName}
-        </Text>
+function HairProfileBenefitCard({ hasHairProfile, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="mr-2 px-4 py-3 items-center justify-center rounded-xl bg-app-primary active:bg-app-primary-pressed"
+    >
+      <Text className="text-center text-sm font-bold text-app-text-inverse">
+        {hasHairProfile ? "View Hair Profile" : "Learn Your Hair Profile"}
+      </Text>
+    </Pressable>
+  );
+}
+
+function StyleIdeasBenefitCard({ onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="mr-2 px-4 py-3 items-center justify-center rounded-xl bg-app-primary active:bg-app-primary-pressed"
+    >
+      <Text className="text-center text-sm font-bold text-app-text-inverse">
+        Style Ideas
+      </Text>
+    </Pressable>
+  );
+}
+
+function MyBookingsBenefitCard({ onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="mr-2 items-center justify-center rounded-xl bg-app-primary px-4 py-3 active:bg-app-primary-pressed"
+    >
+      <Text className="text-center text-sm font-bold text-app-text-inverse">
+        MyBookings
+      </Text>
+    </Pressable>
+  );
+}
+
+function PersonalBenefitsSection({
+  hasHairProfile,
+  isGuest,
+  onRequireAccount,
+}) {
+  function handleProtectedPress(path, options = {}) {
+    if (isGuest && !options.allowGuest) {
+      onRequireAccount();
+      return;
+    }
+
+    router.push(path);
+  }
+
+  return (
+    <View className="mt-8">
+      <Text className="text-lg font-semibold text-app-text">
+        Personal Benefits
+      </Text>
+
+      <View className="mt-3 rounded-2xl border border-app-border-subtle bg-app-surface-elevated p-3">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: 8 }}
+        >
+          <AiChatSection
+            onPress={() => handleProtectedPress("/client/aiChat")}
+          />
+          <HairProfileBenefitCard
+            hasHairProfile={hasHairProfile}
+            onPress={() =>
+              handleProtectedPress(
+                hasHairProfile
+                  ? "/client/hairProfile"
+                  : "/client/hairProfile/uploadProfile"
+              )
+            }
+          />
+          <MyBookingsBenefitCard
+            onPress={() =>
+              handleProtectedPress("/client/bookings", {
+                allowGuest: true,
+              })
+            }
+          />
+          <StyleIdeasBenefitCard
+            onPress={() => handleProtectedPress("/client/styles")}
+          />
+        </ScrollView>
       </View>
+    </View>
+  );
+}
+function HomeHeader({
+  unreadNotificationCount,
+  onNotificationsPress,
+}) {
+  const badgeText =
+    unreadNotificationCount > 9
+      ? "9+"
+      : String(unreadNotificationCount);
+
+  return (
+    <View className="flex-row items-start justify-between">
+      <Text className="text-3xl font-bold text-app-text">
+        Cut<Text className="text-app-primary">Care</Text>
+      </Text>
 
       <Pressable
-        onPress={() => {
-          console.log("Notifications pressed");
-        }}
-        className="h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-gray-50 active:bg-gray-100"
+        onPress={onNotificationsPress}
+        className="relative  p-2 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
       >
-        <Text className="text-xl">🔔</Text>
+        <Ionicons
+          name="notifications-outline"
+          size={28}
+          color="#0B1F3A"
+        />
+
+        {unreadNotificationCount > 0 ? (
+          <View
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -5,
+              minWidth: 20,
+              height: 20,
+              borderRadius: 10,
+              backgroundColor: "#0EA5E9",
+              alignItems: "center",
+              justifyContent: "center",
+              paddingHorizontal: 5,
+            }}
+          >
+            <Text
+              style={{
+                color: "#ffffff",
+                fontSize: 11,
+                fontWeight: "700",
+              }}
+            >
+              {badgeText}
+            </Text>
+          </View>
+        ) : null}
       </Pressable>
     </View>
   );
@@ -68,20 +245,20 @@ function HomeHeader({ displayName }) {
 function NextBookingCard({ booking }) {
   if (!booking) {
     return (
-      <View className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-        <Text className="text-lg font-semibold text-gray-900">
+      <View className="rounded-2xl border border-app-border bg-app-surface p-4">
+        <Text className="text-lg font-semibold text-app-text">
           No upcoming bookings
         </Text>
 
-        <Text className="mt-2 text-sm text-gray-600">
+        <Text className="mt-2 text-sm text-app-text-secondary">
           When you book with a barber, your next appointment will show here.
         </Text>
 
         <Pressable
           onPress={() => router.push("/client/search")}
-          className="mt-4 rounded-xl bg-gray-900 px-4 py-3 active:bg-gray-700"
+          className="mt-4 rounded-xl bg-app-primary px-4 py-3 active:bg-app-primary-pressed"
         >
-          <Text className="text-center font-semibold text-white">
+          <Text className="text-center font-semibold text-app-text-inverse">
             Find a Barber
           </Text>
         </Pressable>
@@ -93,6 +270,10 @@ function NextBookingCard({ booking }) {
     booking.businessName ||
     booking.barberName ||
     "Your barber";
+  const barberImageUrl =
+    booking.barberProfileImageUrl ||
+    getBarberImageUrl(booking);
+  const barberInitial = barberDisplayName.charAt(0).toUpperCase();
 
   const servicesText = Array.isArray(booking.services)
     ? booking.services.map((service) => service.name).join(", ")
@@ -101,28 +282,54 @@ function NextBookingCard({ booking }) {
   return (
     <Pressable
       onPress={() => router.push("/client/bookings")}
-      className="rounded-2xl border border-gray-200 bg-white p-4 active:bg-gray-50"
+      className="rounded-2xl border border-app-border bg-app-surface p-4 active:bg-app-surface-elevated"
     >
-      <Text className="text-sm font-medium text-gray-500">
-        Next Booking
-      </Text>
+      <View className="flex-row items-center">
+        <View className="mr-4 h-16 w-16 overflow-hidden rounded-full bg-app-primary-soft">
+          {barberImageUrl ? (
+            <Image
+              source={{ uri: barberImageUrl }}
+              className="h-full w-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-full w-full items-center justify-center">
+              <Text className="text-2xl font-bold text-app-primary">
+                {barberInitial}
+              </Text>
+            </View>
+          )}
+        </View>
 
-      <Text className="mt-2 text-xl font-bold text-gray-900">
-        {barberDisplayName}
-      </Text>
+        <View className="flex-1">
+          <Text className="text-sm font-medium text-app-text-muted">
+            Next Booking
+          </Text>
 
-      <Text className="mt-2 text-sm text-gray-700">
-        {booking.appointmentDate} • {booking.startTime} - {booking.endTime}
-      </Text>
+          <Text className="mt-1 text-xl font-bold text-app-text">
+            {barberDisplayName}
+          </Text>
 
-      <Text className="mt-2 text-sm text-gray-700">
-        {servicesText}
-      </Text>
+          <Text className="mt-2 text-sm text-app-text-secondary">
+            {booking.appointmentDate} • {booking.startTime} - {booking.endTime}
+          </Text>
 
-      <View className="mt-3 self-start rounded-full bg-gray-100 px-3 py-1">
-        <Text className="text-xs font-semibold uppercase text-gray-700">
-          {booking.status}
-        </Text>
+          <Text className="mt-2 text-sm text-app-text-secondary">
+            {servicesText}
+          </Text>
+
+          <View className="mt-3 self-start rounded-full bg-app-primary px-3 py-1">
+            <Text className="text-xs font-semibold uppercase text-app-text-inverse">
+              {booking.status}
+            </Text>
+          </View>
+        </View>
+
+        <Ionicons
+          name="chevron-forward"
+          size={28}
+          color="#52657A"
+        />
       </View>
     </Pressable>
   );
@@ -145,59 +352,121 @@ function getUniqueBarbersFromBookings(bookings) {
 
   return Object.values(barberMap);
 }
+
+function mergeBookedBarbersWithProfiles(bookedBarbers, localBarbers) {
+  const localBarberMap = {};
+
+  localBarbers.forEach((barber) => {
+    localBarberMap[barber.id] = barber;
+  });
+
+  return bookedBarbers.map((barber) => ({
+    ...barber,
+    ...(localBarberMap[barber.id] || {}),
+  }));
+}
+
+function getBarberImageUrl(barber) {
+  if (barber.profileImageUrl) {
+    return barber.profileImageUrl;
+  }
+
+  if (Array.isArray(barber.portfolioImages)) {
+    return barber.portfolioImages[0]?.url || "";
+  }
+
+  return "";
+}
+
 function MyBarberCard({ barber }) {
   const displayName =
     barber.businessName ||
     barber.barberName ||
     "Barber";
+  const imageUrl = getBarberImageUrl(barber);
 
   return (
-    <Pressable
-      onPress={() => router.push(`/client/barber/${barber.id}`)}
-      className="mr-3 w-40 rounded-2xl border border-gray-200 bg-white p-4 active:bg-gray-50"
+  <View  style={{ width: 200, height: 150 }} className="mr-4 overflow-hidden rounded-2xl border border-app-border bg-app-surface items-center">
+  {imageUrl ? (
+    <Image
+      source={{ uri: imageUrl }}
+      className="absolute inset-0 h-full w-full"
+      resizeMode="cover"
+      blurRadius={10}
+    />
+  ) : (
+    <View className="absolute inset-0 items-center justify-center bg-app-surface-elevated">
+      <Text className="text-7xl font-bold text-app-text-muted">
+        {displayName.charAt(0).toUpperCase()}
+      </Text>
+    </View>
+  )}
+
+  <View className="absolute inset-0 bg-app-background opacity-40" />
+
+  <View className="flex-1 w-full items-center justify-end mb-2 ">
+    <View className="mb-1  h-20 w-20 overflow-hidden rounded-full border-0 bg-app-primary-soft">
+      {imageUrl ? (
+        <Image
+          source={{ uri: imageUrl }}
+          className="h-full w-full"
+          resizeMode="cover"
+        />
+      ) : (
+        <View className="h-full w-full items-center justify-center">
+          <Text className="text-3xl font-bold text-app-text">
+            {displayName.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
+    </View>
+
+    <Text
+      numberOfLines={1}
+      className="text-center text-lg font-bold text-app-text-inverse"
     >
-      <View className="h-14 w-14 items-center justify-center rounded-full bg-gray-100">
-        <Text className="text-xl font-bold text-gray-700">
-          {displayName.charAt(0).toUpperCase()}
-        </Text>
-      </View>
+      {displayName}
+    </Text>
 
-      <Text
-        numberOfLines={1}
-        className="mt-3 text-base font-semibold text-gray-900"
-      >
-        {displayName}
-      </Text>
-
-      <Text className="mt-1 text-xs text-gray-500">
-        Previously booked
-      </Text>
-    </Pressable>
+  <Pressable
+  onPress={() => router.push(`/client/barber/${barber.id}`)}
+  style={{
+    width: 100 ,
+    height: 38,
+  }}
+  className=" items-center  justify-center self-center rounded-xl bg-app-primary active:bg-app-primary-pressed"
+>
+  <Text className="text-center text-base font-bold text-app-text-inverse">
+    Book
+  </Text>
+</Pressable>
+  </View>
+</View>
   );
 }
 
 function MyBarbersSection({ myBarbers }) {
   return (
-    <View className="mt-8">
+    <View className="mt-4">
       <View className="flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-gray-900">
+        <Text className="text-lg font-semibold text-app-text">
           My Barbers
         </Text>
 
         <Pressable onPress={() => router.push("/client/search")}>
-          <Text className="text-sm font-semibold text-gray-900">
+          <Text className="text-sm font-semibold text-app-primary">
             Find Barbers
           </Text>
         </Pressable>
       </View>
 
       {myBarbers.length === 0 ? (
-        <View className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-4">
-          <Text className="text-base font-semibold text-gray-900">
-            No barbers yet
+        <View className="mt-3 rounded-2xl border border-app-border bg-app-surface p-4">
+          <Text className="text-base font-semibold text-app-text">
+            View your Barbers
           </Text>
 
-          <Text className="mt-2 text-sm text-gray-600">
+          <Text className="mt-2 text-sm text-app-text-secondary">
             Book with a barber and they’ll show up here for quick access.
           </Text>
         </View>
@@ -206,6 +475,7 @@ function MyBarbersSection({ myBarbers }) {
           horizontal
           showsHorizontalScrollIndicator={false}
           className="mt-3"
+          contentContainerStyle={{ paddingRight: 20 }}
         >
           {myBarbers.map((barber) => (
             <MyBarberCard key={barber.id} barber={barber} />
@@ -233,52 +503,68 @@ function NoteRow({
     note.businessName ||
     note.barberName ||
     "General note";
+  const notePreview =
+    note.body?.trim() ||
+    "No note details added yet.";
 
   return (
-    <View className="rounded-2xl border border-gray-200 bg-white p-4">
-      <Pressable
-        onPress={() => onPress(note)}
-        className="active:bg-gray-50"
-      >
-        <View className="flex-row items-start justify-between">
-          <View className="flex-1 pr-3">
-            <Text
-              numberOfLines={1}
-              className="text-base font-semibold text-gray-900"
-            >
-              {note.title || "Untitled note"}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              className="mt-1 text-sm text-gray-500"
-            >
-              {barberDisplayName}
-            </Text>
-          </View>
-
-          <Pressable onPress={() => onToggleFavorite(note)}>
-            <Text className="text-xl">
-              {note.isFavorite ? "★" : "☆"}
-            </Text>
-          </Pressable>
-        </View>
-      </Pressable>
-
-      <View className="mt-3 flex-row justify-end gap-3">
-        <Pressable onPress={() => onEdit(note)}>
-          <Text className="text-sm font-semibold text-gray-700">
-            Edit
+    <Pressable
+      onPress={() => onPress(note)}
+      className="rounded-2xl border border-app-border bg-app-surface p-4 active:bg-app-surface-elevated"
+    >
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 pr-3">
+          <Text
+            numberOfLines={1}
+            className="text-base font-semibold text-app-text"
+          >
+            {note.title || "Untitled note"}
           </Text>
-        </Pressable>
 
-        <Pressable onPress={() => onDelete(note)}>
-          <Text className="text-sm font-semibold text-red-500">
-            Delete
+          <Text
+            numberOfLines={1}
+            className="mt-1 text-sm text-app-text-muted"
+          >
+            {barberDisplayName}
+          </Text>
+        </View>
+
+        <Pressable onPress={() => onToggleFavorite(note)}>
+          <Text
+            className={
+              note.isFavorite
+                ? "text-xl text-app-primary"
+                : "text-xl text-app-text-muted"
+            }
+          >
+            {note.isFavorite ? "★" : "☆"}
           </Text>
         </Pressable>
       </View>
-    </View>
+
+      <View className="mt-3 flex-row items-center justify-between">
+        <Text
+          numberOfLines={1}
+          className="flex-1 pr-4 text-sm text-app-text-secondary"
+        >
+          {notePreview}
+        </Text>
+
+        <View className="flex-row gap-3">
+          <Pressable onPress={() => onEdit(note)}>
+            <Text className="text-sm font-semibold text-app-primary">
+              Edit
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={() => onDelete(note)}>
+            <Text className="text-sm font-semibold text-app-text-muted">
+              Delete
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 function PreviousNotesSection({
@@ -296,13 +582,13 @@ function PreviousNotesSection({
   return (
     <View className="mt-8">
       <View className="flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-gray-900">
+        <Text className="text-lg font-semibold text-app-text">
           Previous Notes
         </Text>
 
        <Pressable onPress={onAddNote}>
 
-          <Text className="text-sm font-semibold text-gray-900">
+          <Text className="text-sm font-semibold text-app-primary">
             Add Note
           </Text>
         </Pressable>
@@ -311,13 +597,13 @@ function PreviousNotesSection({
       <View className="mt-3 flex-row gap-2">
         <Pressable
           onPress={() => onChangeSort("recent")}
-          className={`rounded-full px-4 py-2 ${
-            notesSort === "recent" ? "bg-gray-900" : "bg-gray-100"
+          className={`rounded-full border px-4 py-2 ${
+            notesSort === "recent" ? "border-app-primary bg-app-primary" : "border-app-border bg-app-surface"
           }`}
         >
           <Text
             className={`text-sm font-semibold ${
-              notesSort === "recent" ? "text-white" : "text-gray-700"
+              notesSort === "recent" ? "text-app-text-inverse" : "text-app-text-secondary"
             }`}
           >
             Recent
@@ -326,13 +612,13 @@ function PreviousNotesSection({
 
         <Pressable
           onPress={() => onChangeSort("favorites")}
-          className={`rounded-full px-4 py-2 ${
-            notesSort === "favorites" ? "bg-gray-900" : "bg-gray-100"
+          className={`rounded-full border px-4 py-2 ${
+            notesSort === "favorites" ? "border-app-primary bg-app-primary" : "border-app-border bg-app-surface"
           }`}
         >
           <Text
             className={`text-sm font-semibold ${
-              notesSort === "favorites" ? "text-white" : "text-gray-700"
+              notesSort === "favorites" ? "text-app-text-inverse" : "text-app-text-secondary"
             }`}
           >
             Favorites
@@ -341,18 +627,18 @@ function PreviousNotesSection({
       </View>
 
  <View
-  className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-3"
+  className="mt-3 rounded-2xl border border-app-border-subtle bg-app-surface-elevated p-3"
   style={{ height: 260 }}
 >
   {visibleNotes.length === 0 ? (
     <View className="p-2">
-      <Text className="text-base font-semibold text-gray-900">
+      <Text className="text-base font-semibold text-app-text">
         {notesSort === "favorites"
           ? "No favorite notes yet"
           : "No notes yet"}
       </Text>
 
-      <Text className="mt-2 text-sm text-gray-600">
+      <Text className="mt-2 text-sm text-app-text-secondary">
         {notesSort === "favorites"
           ? "Favorite notes will show here for quick access."
           : "Save haircut reminders here, like what to ask for next time or what a barber did well."}
@@ -415,15 +701,15 @@ function NoteModal({
 >
   <Pressable
     onPress={(event) => event.stopPropagation()}
-    className="max-h-[85%] w-full rounded-3xl bg-white px-5 pb-6 pt-5"
+    className="max-h-[85%] w-full rounded-3xl border border-app-border bg-app-surface px-5 pb-6 pt-5"
   >
           <View className="flex-row items-center justify-between">
-            <Text className="text-xl font-bold text-gray-900">
+            <Text className="text-xl font-bold text-app-text">
               {isEditing ? "Edit Note" : "Add Note"}
             </Text>
 
             <Pressable onPress={onClose}>
-              <Text className="text-base font-semibold text-gray-600">
+              <Text className="text-base font-semibold text-app-text-secondary">
                 Close
               </Text>
             </Pressable>
@@ -433,7 +719,7 @@ function NoteModal({
             className="mt-5"
             showsVerticalScrollIndicator={false}
           >
-            <Text className="mb-2 text-sm font-semibold text-gray-700">
+            <Text className="mb-2 text-sm font-semibold text-app-text-secondary">
               Title
             </Text>
 
@@ -441,15 +727,16 @@ function NoteModal({
               value={noteTitle}
               onChangeText={onChangeTitle}
               placeholder="Example: Ask for lower taper"
-              className="rounded-2xl border border-gray-200 px-4 py-3 text-gray-900"
+              placeholderTextColor="#78909A"
+              className="rounded-2xl border border-app-border bg-app-background-soft px-4 py-3 text-app-text"
             />
             {formError ? (
-  <Text className="mt-2 text-sm font-medium text-red-500">
+  <Text className="mt-2 text-sm font-medium text-app-error">
     {formError}
   </Text>
 ) : null}
 
-            <Text className="mb-2 mt-5 text-sm font-semibold text-gray-700">
+            <Text className="mb-2 mt-5 text-sm font-semibold text-app-text-secondary">
               Optional Barber
             </Text>
 
@@ -461,15 +748,15 @@ function NoteModal({
                 onPress={() => onSelectBarber(null)}
                 className={`mr-2 rounded-full border px-4 py-2 ${
                   selectedBarberId === null
-                    ? "border-gray-900 bg-gray-900"
-                    : "border-gray-200 bg-gray-50"
+                    ? "border-app-primary bg-app-primary"
+                    : "border-app-border bg-app-background-soft"
                 }`}
               >
                 <Text
                   className={`text-sm font-semibold ${
                     selectedBarberId === null
-                      ? "text-white"
-                      : "text-gray-700"
+                      ? "text-app-text-inverse"
+                      : "text-app-text-secondary"
                   }`}
                 >
                   None
@@ -490,14 +777,14 @@ function NoteModal({
                     onPress={() => onSelectBarber(barber.id)}
                     className={`mr-2 rounded-full border px-4 py-2 ${
                       isSelected
-                        ? "border-gray-900 bg-gray-900"
-                        : "border-gray-200 bg-gray-50"
+                        ? "border-app-primary bg-app-primary"
+                        : "border-app-border bg-app-background-soft"
                     }`}
                   >
                     <Text
                       numberOfLines={1}
                       className={`max-w-[140px] text-sm font-semibold ${
-                        isSelected ? "text-white" : "text-gray-700"
+                        isSelected ? "text-app-text-inverse" : "text-app-text-secondary"
                       }`}
                     >
                       {barberName}
@@ -507,7 +794,7 @@ function NoteModal({
               })}
             </ScrollView>
 
-            <Text className="mb-2 mt-5 text-sm font-semibold text-gray-700">
+            <Text className="mb-2 mt-5 text-sm font-semibold text-app-text-secondary">
               Body
             </Text>
 
@@ -515,20 +802,27 @@ function NoteModal({
               value={noteBody}
               onChangeText={onChangeBody}
               placeholder="Write what you want to remember for your next cut..."
+              placeholderTextColor="#78909A"
               multiline
               textAlignVertical="top"
-              className="min-h-32 rounded-2xl border border-gray-200 px-4 py-3 text-gray-900"
+              className="min-h-32 rounded-2xl border border-app-border bg-app-background-soft px-4 py-3 text-app-text"
             />
 
             <Pressable
               onPress={onToggleFavorite}
-              className="mt-5 flex-row items-center rounded-2xl border border-gray-200 bg-gray-50 p-4"
+              className="mt-5 flex-row items-center rounded-2xl border border-app-border bg-app-background-soft p-4"
             >
-              <Text className="mr-3 text-xl">
+              <Text
+                className={
+                  noteIsFavorite
+                    ? "mr-3 text-xl text-app-primary"
+                    : "mr-3 text-xl text-app-text-muted"
+                }
+              >
                 {noteIsFavorite ? "★" : "☆"}
               </Text>
 
-              <Text className="text-base font-semibold text-gray-900">
+              <Text className="text-base font-semibold text-app-text">
                 {noteIsFavorite
                   ? "Favorited"
                   : "Mark as favorite"}
@@ -538,9 +832,9 @@ function NoteModal({
             <View className="mt-6 flex-row gap-3">
               <Pressable
                 onPress={onClose}
-                className="flex-1 rounded-xl border border-gray-200 px-4 py-3"
+                className="flex-1 rounded-xl border border-app-border px-4 py-3"
               >
-                <Text className="text-center font-semibold text-gray-700">
+                <Text className="text-center font-semibold text-app-text-secondary">
                   Cancel
                 </Text>
               </Pressable>
@@ -548,10 +842,10 @@ function NoteModal({
               <Pressable
   onPress={saving ? undefined : onSave}
   className={`flex-1 rounded-xl px-4 py-3 ${
-    saving ? "bg-gray-400" : "bg-gray-900 active:bg-gray-700"
+    saving ? "bg-app-disabled" : "bg-app-primary active:bg-app-primary-pressed"
   }`}
 >
-  <Text className="text-center font-semibold text-white">
+  <Text className="text-center font-semibold text-app-text-inverse">
     {saving ? "Saving..." : "Save"}
   </Text>
 </Pressable>
@@ -565,10 +859,12 @@ function NoteModal({
 export default function ClientHomeScreen() {
   const [userData, setUserData] = useState(null);
   const [clientData, setClientData] = useState(null);
-
+const [
+  unreadNotificationCount,
+  setUnreadNotificationCount,
+] = useState(0);
   const [nextUpcomingBooking, setNextUpcomingBooking] = useState(null);
   const [myBarbers, setMyBarbers] = useState([]);
-  const [localBarbers, setLocalBarbers] = useState([]);
   const [notes, setNotes] = useState([]);
 const [notesSort, setNotesSort] = useState("recent");
 
@@ -581,15 +877,106 @@ const [selectedBarberId, setSelectedBarberId] = useState(null);
 const [noteIsFavorite, setNoteIsFavorite] = useState(false);
 const [savingNote, setSavingNote] = useState(false);
 const [noteFormError, setNoteFormError] = useState("");
+const [accountModalVisible, setAccountModalVisible] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+useEffect(() => {
+  const currentUser = auth.currentUser;
 
+  if (!currentUser?.uid) {
+    const resetTimer = setTimeout(() => {
+      setUnreadNotificationCount(0);
+    }, 0);
 
-  const router = useRouter();
-  const loadHomeData = useCallback(async () => {
+    return () => clearTimeout(resetTimer);
+  }
+
+  const unsubscribe =
+    listenToUnreadNotificationCount(
+      currentUser.uid,
+      (count) => {
+        setUnreadNotificationCount(count);
+      },
+      (error) => {
+        console.log(
+          "Listen to notification badge error:",
+          error
+        );
+
+        setUnreadNotificationCount(0);
+      }
+    );
+
+  return () => unsubscribe();
+}, []);
+
+  const loadCachedHomeData = useCallback(async (uid) => {
     try {
-      setLoading(true);
+      const memoryCache = homeMemoryCache.get(uid);
+
+      if (memoryCache) {
+        setUserData(memoryCache.userData || null);
+        setClientData(memoryCache.clientData || null);
+        setNextUpcomingBooking(memoryCache.nextUpcomingBooking || null);
+        setMyBarbers(memoryCache.myBarbers || []);
+        setNotes(memoryCache.notes || []);
+
+        return true;
+      }
+
+      const cachedHomeData = await AsyncStorage.getItem(
+        getHomeCacheKey(uid)
+      );
+
+      if (!cachedHomeData) {
+        return false;
+      }
+
+      const parsedCache = JSON.parse(cachedHomeData);
+      homeMemoryCache.set(uid, parsedCache);
+
+      setUserData(parsedCache.userData || null);
+      setClientData(parsedCache.clientData || null);
+      setNextUpcomingBooking(parsedCache.nextUpcomingBooking || null);
+      setMyBarbers(parsedCache.myBarbers || []);
+      setNotes(parsedCache.notes || []);
+
+      return true;
+    } catch (err) {
+      console.log("Load cached client home error:", err);
+      return false;
+    }
+  }, []);
+
+  const saveHomeCache = useCallback(async ({
+    uid,
+    loadedUserData,
+    loadedClientData,
+    nextBooking,
+    pastOrCurrentBarbers,
+    allBarbers,
+    loadedNotes,
+  }) => {
+    await updateHomeCache(uid, {
+      userData: loadedUserData,
+      clientData: loadedClientData,
+      nextUpcomingBooking: nextBooking,
+      myBarbers: pastOrCurrentBarbers,
+      localBarbers: allBarbers,
+      notes: loadedNotes,
+    });
+  }, []);
+
+  const loadHomeData = useCallback(async ({
+    showLoader = true,
+    useCache = false,
+    showErrorOnFailure = true,
+  } = {}) => {
+    let hasCachedData = false;
+
+    try {
       setError("");
 
       const currentUser = auth.currentUser;
@@ -601,6 +988,19 @@ const [noteFormError, setNoteFormError] = useState("");
 
       const uid = currentUser.uid;
 
+      if (useCache) {
+        hasCachedData = await loadCachedHomeData(uid);
+
+        if (hasCachedData) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (showLoader) {
+        setLoading(true);
+      }
+
       const userRef = doc(db, "users", uid);
       const clientRef = doc(db, "clients", uid);
 
@@ -609,37 +1009,32 @@ const [noteFormError, setNoteFormError] = useState("");
         bookingsRef,
         where("clientId", "==", uid)
       );
-      const notesRef = collection(db, "clients", uid, "notes");
-const notesQuery = query(
-  notesRef,
-  orderBy("updatedAt", "desc")
-);
+     
 
-      const [
+const [
   userSnap,
   clientSnap,
   bookingsSnap,
-  notesSnap,
+  loadedNotes,
   allBarbers,
 ] = await Promise.all([
   getDoc(userRef),
   getDoc(clientRef),
   getDocs(bookingsQuery),
-  getDocs(notesQuery),
+  getClientNotes(uid),
   getLocalBarbers(),
 ]);
 
-      if (userSnap.exists()) {
-        setUserData(userSnap.data());
-      } else {
-        setUserData(null);
-      }
+      const loadedUserData = userSnap.exists()
+        ? userSnap.data()
+        : null;
 
-      if (clientSnap.exists()) {
-        setClientData(clientSnap.data());
-      } else {
-        setClientData(null);
-      }
+      const loadedClientData = clientSnap.exists()
+        ? clientSnap.data()
+        : null;
+
+      setUserData(loadedUserData);
+      setClientData(loadedClientData);
 
       const bookings = bookingsSnap.docs.map((bookingDoc) => ({
         id: bookingDoc.id,
@@ -661,32 +1056,87 @@ const notesQuery = query(
       );
 
       const nextBooking = sortedUpcomingBookings[0] || null;
+      const nextBookingBarber = nextBooking
+        ? allBarbers.find((barber) => barber.id === nextBooking.barberId)
+        : null;
+      const nextBookingWithBarber = nextBooking
+        ? {
+            ...nextBooking,
+            barberProfileImageUrl: nextBookingBarber
+              ? getBarberImageUrl(nextBookingBarber)
+              : "",
+          }
+        : null;
 
-      const pastOrCurrentBarbers = getUniqueBarbersFromBookings(bookings);
+      const pastOrCurrentBarbers = mergeBookedBarbersWithProfiles(
+        getUniqueBarbersFromBookings(bookings),
+        allBarbers
+      );
 
-      const loadedNotes = notesSnap.docs.map((noteDoc) => ({
-  id: noteDoc.id,
-  ...noteDoc.data(),
-}));
-      setNextUpcomingBooking(nextBooking);
+    
+      setNextUpcomingBooking(nextBookingWithBarber);
       setMyBarbers(pastOrCurrentBarbers);
-      setLocalBarbers(allBarbers);
       setNotes(loadedNotes);
+
+      await saveHomeCache({
+        uid,
+        loadedUserData,
+        loadedClientData,
+        nextBooking: nextBookingWithBarber,
+        pastOrCurrentBarbers,
+        allBarbers,
+        loadedNotes,
+      });
     } catch (err) {
       console.log("Error loading client home:", err);
-      setError("Failed to load home. Please try again.");
+      if (showErrorOnFailure && !hasCachedData) {
+        setError("Failed to load home. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadCachedHomeData, saveHomeCache]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadHomeData();
-    }, [loadHomeData])
-  );
+  useEffect(() => {
+    let isMounted = true;
+
+    Promise.resolve().then(() => {
+      if (!isMounted) {
+        return;
+      }
+
+      loadHomeData({
+        showLoader: true,
+        useCache: true,
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [loadHomeData]);
+
+const handleRefresh = useCallback(async () => {
+  setRefreshing(true);
+  await loadHomeData({
+    showLoader: false,
+    showErrorOnFailure: false,
+  });
+  setRefreshing(false);
+}, [loadHomeData]);
+
+ const isGuest = Boolean(userData?.isGuest || auth.currentUser?.isAnonymous);
+
+ const requireAccount = () => {
+  setAccountModalVisible(true);
+};
 
  const openCreateNoteModal = () => {
+  if (isGuest) {
+    requireAccount();
+    return;
+  }
+
   setEditingNote(null);
   setNoteTitle("");
   setNoteBody("");
@@ -697,6 +1147,11 @@ const notesQuery = query(
 };
 
 const openEditNoteModal = (note) => {
+  if (isGuest) {
+    requireAccount();
+    return;
+  }
+
   setEditingNote(note);
   setNoteTitle(note.title || "");
   setNoteBody(note.body || "");
@@ -707,10 +1162,17 @@ const openEditNoteModal = (note) => {
 };
 const handleSaveNote = async () => {
   try {
+    if (isGuest) {
+      requireAccount();
+      return;
+    }
+
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      setError("You must be logged in to save notes.");
+      setError(
+        "You must be logged in to save notes."
+      );
       return;
     }
 
@@ -718,80 +1180,91 @@ const handleSaveNote = async () => {
     const trimmedBody = noteBody.trim();
 
     if (!trimmedTitle) {
-  setNoteFormError("Note title is required.");
-  return;
-}
+      setNoteFormError(
+        "Note title is required."
+      );
+      return;
+    }
 
     setSavingNote(true);
     setError("");
     setNoteFormError("");
 
-    const uid = currentUser.uid;
-
     const selectedBarber = myBarbers.find(
-      (barber) => barber.id === selectedBarberId
+      (barber) =>
+        barber.id === selectedBarberId
     );
 
     const noteData = {
+      clientId: currentUser.uid,
       title: trimmedTitle,
       body: trimmedBody,
       barberId: selectedBarber?.id || null,
-      barberName: selectedBarber?.barberName || "",
-      businessName: selectedBarber?.businessName || "",
+      barberName:
+        selectedBarber?.barberName || "",
+      businessName:
+        selectedBarber?.businessName || "",
       isFavorite: noteIsFavorite,
-      updatedAt: serverTimestamp(),
     };
 
     if (editingNote) {
-      const noteRef = doc(
-        db,
-        "clients",
-        uid,
-        "notes",
-        editingNote.id
-      );
-
-      await updateDoc(noteRef, noteData);
-    } else {
-      const notesRef = collection(db, "clients", uid, "notes");
-
-      await addDoc(notesRef, {
+      await updateClientNote({
         ...noteData,
-        createdAt: serverTimestamp(),
+        noteId: editingNote.id,
       });
+    } else {
+      await createClientNote(noteData);
     }
 
     closeNoteModal();
     await loadNotesOnly();
   } catch (err) {
-    console.log("Error saving note:", err);
-    setError("Failed to save note. Please try again.");
+    console.log(
+      "Error saving note:",
+      err
+    );
+
+    setError(
+      "Failed to save note. Please try again."
+    );
   } finally {
     setSavingNote(false);
   }
 };
-const handleToggleFavoriteNote = async (note) => {
+const handleToggleFavoriteNote = async (
+  note
+) => {
   try {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      setError("You must be logged in to update notes.");
+    if (isGuest) {
+      requireAccount();
       return;
     }
 
-    const uid = currentUser.uid;
+    const currentUser = auth.currentUser;
 
-    const noteRef = doc(db, "clients", uid, "notes", note.id);
+    if (!currentUser) {
+      setError(
+        "You must be logged in to update notes."
+      );
+      return;
+    }
 
-    await updateDoc(noteRef, {
+    await setClientNoteFavorite({
+      clientId: currentUser.uid,
+      noteId: note.id,
       isFavorite: !note.isFavorite,
-      updatedAt: serverTimestamp(),
     });
 
-await loadNotesOnly();
+    await loadNotesOnly();
   } catch (err) {
-    console.log("Error toggling note favorite:", err);
-    setError("Failed to update note. Please try again.");
+    console.log(
+      "Error toggling note favorite:",
+      err
+    );
+
+    setError(
+      "Failed to update note. Please try again."
+    );
   }
 };
 const loadNotesOnly = useCallback(async () => {
@@ -804,86 +1277,107 @@ const loadNotesOnly = useCallback(async () => {
 
     const uid = currentUser.uid;
 
-    const notesRef = collection(db, "clients", uid, "notes");
-    const notesQuery = query(
-      notesRef,
-      orderBy("updatedAt", "desc")
+    const loadedNotes = await getClientNotes(
+      currentUser.uid
     );
 
-    const notesSnap = await getDocs(notesQuery);
-
-    const loadedNotes = notesSnap.docs.map((noteDoc) => ({
-      id: noteDoc.id,
-      ...noteDoc.data(),
-    }));
-
     setNotes(loadedNotes);
+    await updateHomeCache(uid, {
+      notes: loadedNotes,
+    });
   } catch (err) {
     console.log("Error loading notes:", err);
     setError("Failed to load notes. Please try again.");
   }
 }, []);
-const handleDeleteNote = async (note) => {
+const handleDeleteNote = async (
+  note
+) => {
   try {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      setError("You must be logged in to delete notes.");
+    if (isGuest) {
+      requireAccount();
       return;
     }
 
-    const uid = currentUser.uid;
+    const currentUser = auth.currentUser;
 
-    const noteRef = doc(db, "clients", uid, "notes", note.id);
+    if (!currentUser) {
+      setError(
+        "You must be logged in to delete notes."
+      );
+      return;
+    }
 
-    await deleteDoc(noteRef);
+    await deleteClientNote({
+      clientId: currentUser.uid,
+      noteId: note.id,
+    });
 
     if (editingNote?.id === note.id) {
       closeNoteModal();
     }
 
-await loadNotesOnly();
+    await loadNotesOnly();
   } catch (err) {
-    console.log("Error deleting note:", err);
-    setError("Failed to delete note. Please try again.");
+    console.log(
+      "Error deleting note:",
+      err
+    );
+
+    setError(
+      "Failed to delete note. Please try again."
+    );
   }
 };
 const closeNoteModal = () => {
   setNoteFormError("");
   setNoteModalVisible(false);
 };
-  const displayName =
-    clientData?.preferredName ||
-    userData?.fullName ||
-    clientData?.fullName ||
-    "there";
+  const hasHairProfile =
+    clientData?.aiHairProfile?.hasConfirmedProfile === true &&
+    Boolean(clientData?.aiHairProfile?.activeProfileId);
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center">
+      <SafeAreaView className="flex-1 bg-app-background items-center justify-center">
         <ActivityIndicator size="large" />
-        <Text className="mt-3 text-gray-600">Loading home...</Text>
+        <Text className="mt-3 text-app-text-muted">Loading home...</Text>
       </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-white items-center justify-center px-6">
-        <Text className="text-red-500 text-center">{error}</Text>
+      <SafeAreaView className="flex-1 bg-app-background items-center justify-center px-6">
+        <Text className="text-app-error text-center">{error}</Text>
       </SafeAreaView>
     );
   }
 
   return (
-  <SafeAreaView className="flex-1 bg-white">
-    <ScrollView className="flex-1 px-5 py-4">
-      <HomeHeader displayName={displayName} />
-
+  <SafeAreaView className="flex-1 bg-app-background">
+    <ScrollView
+      className="flex-1"
+      contentContainerClassName="px-6 py-6"
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#1677FF"
+          colors={["#1677FF"]}
+        />
+      }
+    >
+<HomeHeader
+  unreadNotificationCount={unreadNotificationCount}
+  onNotificationsPress={() => {
+    router.push("/client/notifications");
+  }}
+/>
       <MyBarbersSection myBarbers={myBarbers} />
 
-      <View className="mt-8">
-        <Text className="mb-3 text-lg font-semibold text-gray-900">
+      <View  className="mt-8 ">
+        <Text className="mb-3 text-lg font-semibold text-app-text">
           Next Booking
         </Text>
 
@@ -900,11 +1394,11 @@ const closeNoteModal = () => {
   onToggleFavorite={handleToggleFavoriteNote}
   onDeleteNote={handleDeleteNote}
 ></PreviousNotesSection>
-  <View>
-<Pressable onPress={()=>router.push("/client/hairProfile/")} className="mt-6 rounded-xl">
-  <Text>Hair onboardied?</Text>
-</Pressable>
-</View>
+<PersonalBenefitsSection
+  hasHairProfile={hasHairProfile}
+  isGuest={isGuest}
+  onRequireAccount={requireAccount}
+/>
     </ScrollView>
     <NoteModal
       visible={noteModalVisible}
@@ -924,6 +1418,10 @@ const closeNoteModal = () => {
         formError={noteFormError}
 
 
+    />
+    <AccountRequiredModal
+      visible={accountModalVisible}
+      onClose={() => setAccountModalVisible(false)}
     />
   </SafeAreaView>
   

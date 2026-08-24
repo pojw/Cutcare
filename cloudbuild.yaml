@@ -1,0 +1,35 @@
+steps:
+  - id: build-ai-image
+    name: gcr.io/k8s-skaffold/pack
+    dir: ai
+    args:
+      - build
+      - us-east5-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/cutcare:$COMMIT_SHA
+      - --builder
+      - gcr.io/buildpacks/builder:universal_builder_20260202_RC02
+      - --publish
+      - --env
+      - GOOGLE_ENTRYPOINT=python -m app.start
+      - --env
+      - GOOGLE_PYTHON_VERSION=3.11
+
+  - id: deploy-ai-service
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    args:
+      - gcloud
+      - run
+      - deploy
+      - cutcare
+      - --image
+      - us-east5-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/cutcare:$COMMIT_SHA
+      - --region
+      - us-east5
+      - --platform
+      - managed
+      - --port
+      - "8080"
+      - --quiet
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

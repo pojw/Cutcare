@@ -2,14 +2,14 @@ import { View, Text, Pressable } from "react-native";
 
 export default function ServiceCard({ service, saving, onEdit, onDelete }) {
   return (
-    <View className="mb-4 rounded-3xl border border-gray-200 bg-white p-5">
+    <View className="mb-4 rounded-3xl border border-app-border bg-app-surface p-5">
       <View className="mb-3 flex-row items-start justify-between">
         <View className="flex-1 pr-4">
-          <Text className="text-xl font-bold text-black">
+          <Text className="text-xl font-bold text-app-text">
             {service.name || "Unnamed service"}
           </Text>
 
-          <Text className="mt-1 text-sm text-gray-500">
+          <Text className="mt-1 text-sm text-app-text-muted">
             ${service.price ?? 0} • {service.durationMinutes ?? 0} min
           </Text>
         </View>
@@ -18,25 +18,25 @@ export default function ServiceCard({ service, saving, onEdit, onDelete }) {
           <Pressable
             onPress={onEdit}
             disabled={saving}
-            className="rounded-xl bg-gray-100 px-3 py-2"
+            className="rounded-xl bg-app-primary-soft px-3 py-2"
           >
-            <Text className="text-sm font-bold text-black">Edit</Text>
+            <Text className="text-sm font-bold text-app-primary">Edit</Text>
           </Pressable>
 
           <Pressable
             onPress={onDelete}
             disabled={saving}
-            className="rounded-xl bg-red-50 px-3 py-2"
+            className="rounded-xl bg-app-surface-elevated px-3 py-2"
           >
-            <Text className="text-sm font-bold text-red-600">Delete</Text>
+            <Text className="text-sm font-bold text-app-text-muted">Delete</Text>
           </Pressable>
         </View>
       </View>
 
       {service.description ? (
-        <Text className="text-base text-gray-600">{service.description}</Text>
+        <Text className="text-base text-app-text-secondary">{service.description}</Text>
       ) : (
-        <Text className="text-base text-gray-400">No description added.</Text>
+        <Text className="text-base text-app-text-muted">No description added.</Text>
       )}
     </View>
   );

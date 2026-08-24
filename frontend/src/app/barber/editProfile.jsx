@@ -1,27 +1,32 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
   ActivityIndicator,
-  Alert,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from "react-native";
+import { Ionicons } from "@/components/icons/AppIcon";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useAppAlert } from "../../context/AppAlertContext";
 
 import { auth, db } from "../../config/firebase";
+import LocationPicker from "../../components/location/LocationPicker";
+import ConfirmationModal from "../../components/ConfirmationModal";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
 
 import {
-  pickImage,uploadBarberProfileImage,  uploadBarberPortfolioImage,
+  pickImage, uploadBarberProfileImage,
   deleteBarberPortfolioImage,
-}from "../../services/barberImageService"
+} from "../../services/barberImageService";
 const MAX_PORTFOLIO_IMAGES = 8;
+
 function FormInput({
   label,
   value,
@@ -32,17 +37,19 @@ function FormInput({
 }) {
   return (
     <View className="mb-4">
-      <Text className="mb-2 text-sm font-semibold text-gray-700">{label}</Text>
+      <Text className="mb-2 text-sm font-semibold text-app-text-muted">
+        {label}
+      </Text>
 
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor="#8292A6"
         multiline={multiline}
         keyboardType={keyboardType}
         autoCapitalize="sentences"
-        className={`rounded-2xl border border-gray-300 bg-gray-50 px-4 py-4 text-base text-black ${
+        className={`rounded-2xl border border-app-border bg-app-surface px-4 py-4 text-base text-app-text ${
           multiline ? "min-h-28 text-top" : ""
         }`}
       />
@@ -62,18 +69,44 @@ function arrayToText(value) {
   return value.join(", ");
 }
 
+function EditProfileHeader({ onBack }) {
+  return (
+    <View className="mb-8 flex-row items-center">
+      <Pressable
+        onPress={onBack}
+        className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft active:bg-app-surface-elevated"
+      >
+        <Ionicons name="arrow-back" size={24} color="#1677FF" />
+      </Pressable>
+
+      <Text className="flex-1 text-center text-3xl font-bold text-app-text">
+        Edit<Text className="text-app-primary">Profile</Text>
+      </Text>
+
+      <View className="h-11 w-11" />
+    </View>
+  );
+}
+
 export default function EditBarberProfile() {
+  const { showAppAlert } = useAppAlert();
   const router = useRouter();
 
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
-  const [city, setCity] = useState("");
-  const [stateValue, setStateValue] = useState("");
+  const [location, setLocation] = useState({
+    city: "",
+    state: "",
+    stateCode: "",
+    countryCode: "US",
+  });
   const [specialties, setSpecialties] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveConfirmationVisible, setSaveConfirmationVisible] =
+  useState(false);
 
 
   const [selectedProfileImage, setSelectedProfileImage] =
@@ -89,62 +122,64 @@ const [profileImageError, setProfileImageError] =
   const [portfolioImages, setPortfolioImages] =
   useState([]);
 
-const [uploadingPortfolioImage, setUploadingPortfolioImage] =
-  useState(false);
-
 const [portfolioImageError, setPortfolioImageError] =
   useState("");
+const [portfolioImageToDelete, setPortfolioImageToDelete] =
+  useState(null);
+const [deletingPortfolioImage, setDeletingPortfolioImage] =
+  useState(false);
+const [deletePortfolioImageError, setDeletePortfolioImageError] =
+  useState("");
+
+  const loadBarberProfile = useCallback(async () => {
+    try {
+      const currentUser = auth.currentUser;
+
+      if (!currentUser) {
+        router.replace("/login");
+        return;
+      }
+
+      const barberRef = doc(db, "barbers", currentUser.uid);
+      const barberSnap = await getDoc(barberRef);
+
+      if (!barberSnap.exists()) {
+        showAppAlert("Profile not found", "Your barber profile could not be found.");
+        router.back();
+        return;
+      }
+
+      const data = barberSnap.data();
+
+      setPortfolioImages(
+        Array.isArray(data.portfolioImages) ? data.portfolioImages : []
+      );
+      setProfileImageUrl(data.profileImageUrl || "");
+      setBusinessName(data.businessName || "");
+      setPhone(data.phone || "");
+      setBio(data.bio || "");
+      setLocation({
+        city: data.location?.city || "",
+        state: data.location?.state || "",
+        stateCode: data.location?.stateCode || data.location?.state || "",
+        countryCode: data.location?.countryCode || "US",
+      });
+      setSpecialties(arrayToText(data.specialties));
+    } catch (error) {
+      console.log("Load barber edit profile error:", error);
+      showAppAlert("Error", "Something went wrong while loading your profile.");
+    } finally {
+      setLoading(false);
+    }
+  }, [router, showAppAlert]);
 
   useEffect(() => {
-    async function loadBarberProfile() {
-      try {
-        const currentUser = auth.currentUser;
-        console.log("Current user:", currentUser);
-        if (!currentUser) {
-          router.replace("/login");
-          return;
-        }
+    const loadTimer = setTimeout(() => {
+      loadBarberProfile();
+    }, 0);
 
-        const barberRef = doc(db, "barbers", currentUser.uid);
-        const barberSnap = await getDoc(barberRef);
-
-        if (!barberSnap.exists()) {
-          Alert.alert("Profile not found", "Your barber profile could not be found.");
-          router.back();
-          return;
-        }
-
-        const data = barberSnap.data();
-        setPortfolioImages(
-  Array.isArray(data.portfolioImages)
-    ? data.portfolioImages
-    : []
-);
-        setProfileImageUrl(data.profileImageUrl || "");
-        setBusinessName(data.businessName || "");
-        setPhone(data.phone || "");
-        setBio(data.bio || "");
-        setCity(data.location?.city || "");
-        setStateValue(data.location?.state || "");
-        setSpecialties(arrayToText(data.specialties));
-
-      } catch (error) {
-  console.log("Storage error code:", error.code);
-  console.log("Storage error message:", error.message);
-  console.log("Storage custom data:", error.customData);
-  console.log("Full storage error:", error);
-
-  setProfileImageError(
-    "Unable to upload profile image. Please try again."
-  );
-        Alert.alert("Error", "Something went wrong while loading your profile.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadBarberProfile();
-  }, []);
+    return () => clearTimeout(loadTimer);
+  }, [loadBarberProfile]);
 
   async function handleSave() {
     try {
@@ -156,7 +191,12 @@ const [portfolioImageError, setPortfolioImageError] =
       }
 
       if (!businessName.trim()) {
-        Alert.alert("Missing business name", "Please enter your business name.");
+        showAppAlert("Missing business name", "Please enter your business name.");
+        return;
+      }
+
+      if (!location.city || !location.stateCode) {
+        showAppAlert("Missing location", "Please choose your city and state.");
         return;
       }
 
@@ -169,19 +209,16 @@ const [portfolioImageError, setPortfolioImageError] =
         phone: phone.trim(),
         bio: bio.trim(),
         location: {
-          city: city.trim(),
-          state: stateValue.trim(),
+          city: location.city,
+          state: location.state,
+          stateCode: location.stateCode,
+          countryCode: "US",
         },
         specialties: textToArray(specialties),
         updatedAt: serverTimestamp(),
       });
 
-      Alert.alert("Profile updated", "Your barber profile has been saved.", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      setSaveConfirmationVisible(true);
     } catch (error) {
       console.log("Save barber profile error:", error);
   console.log("Portfolio error code:", error.code);
@@ -193,7 +230,7 @@ const [portfolioImageError, setPortfolioImageError] =
     "Unable to upload portfolio image. Please try again."
   );
 
-      Alert.alert("Save failed", "Something went wrong while saving your profile.");
+      showAppAlert("Save failed", "Something went wrong while saving your profile.");
     } finally {
       setSaving(false);
     }
@@ -203,73 +240,11 @@ const [portfolioImageError, setPortfolioImageError] =
   profileImageUrl ||
   null;
 
-  async function handlePortfolioImageUpload() {
-  if (uploadingPortfolioImage) {
-    return;
-  }
-
-  if (portfolioImages.length >= MAX_PORTFOLIO_IMAGES) {
-    Alert.alert(
-      "Portfolio limit reached",
-      "You can upload a maximum of 8 portfolio images."
-    );
-    return;
-  }
-
-  try {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      router.replace("/login");
-      return;
-    }
-
-    setPortfolioImageError("");
-
-    const selectedImage = await pickImage();
-
-    if (!selectedImage) {
-      return;
-    }
-
-    setUploadingPortfolioImage(true);
-
-    const uploadedImage =
-      await uploadBarberPortfolioImage({
-        barberId: currentUser.uid,
-        imageUri: selectedImage.uri,
-        mimeType: selectedImage.mimeType,
-      });
-
-    setPortfolioImages((currentImages) => [
-      ...currentImages,
-      uploadedImage,
-    ]);
-
-    Alert.alert(
-      "Success",
-      "Portfolio image uploaded successfully."
-    );
-  } catch (error) {
-    console.log("Portfolio upload error:", error);
-    console.log("Portfolio error code:", error.code);
-  console.log("Portfolio error message:", error.message);
-  console.log("Portfolio custom data:", error.customData);
-  console.log("Full portfolio error:", error);
-
-    setPortfolioImageError(
-      "Unable to upload portfolio image. Please try again."
-    );
-  } finally {
-    setUploadingPortfolioImage(false);
-  }
-}
-
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+      <SafeAreaView className="flex-1 items-center justify-center bg-app-background">
         <ActivityIndicator size="large" />
-        <Text className="mt-4 text-gray-500">Loading edit profile...</Text>
+        <Text className="mt-4 text-app-text-muted">Loading edit profile...</Text>
       </SafeAreaView>
     );
   }
@@ -288,7 +263,9 @@ async function handleProfileImageUpload() {
 
     setProfileImageError("");
 
-    const selectedImage = await pickImage();
+    const selectedImage = await pickImage({
+      aspect: [1, 1],
+    });
 
     if (!selectedImage) {
       return;
@@ -306,7 +283,7 @@ async function handleProfileImageUpload() {
 
     setProfileImageUrl(uploadedImage.url);
 
-    Alert.alert(
+    showAppAlert(
       "Success",
       "Profile image updated successfully."
     );
@@ -325,56 +302,85 @@ async function handleProfileImageUpload() {
   }
 }
 function handleDeletePortfolioImage(image) {
-  Alert.alert(
-    "Delete portfolio image?",
-    "This image will be permanently removed from your portfolio.",
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const currentUser = auth.currentUser;
+  setPortfolioImageToDelete(image);
+  setDeletePortfolioImageError("");
+}
 
-            if (!currentUser) {
-              router.replace("/login");
-              return;
-            }
+function closeDeletePortfolioImageModal() {
+  if (deletingPortfolioImage) {
+    return;
+  }
 
-            setPortfolioImageError("");
+  setPortfolioImageToDelete(null);
+  setDeletePortfolioImageError("");
+}
 
-            await deleteBarberPortfolioImage({
-              barberId: currentUser.uid,
-              image,
-            });
+async function handleConfirmDeletePortfolioImage() {
+  if (!portfolioImageToDelete) {
+    return;
+  }
 
-            setPortfolioImages((currentImages) =>
-              currentImages.filter(
-                (portfolioImage) =>
-                  portfolioImage.id !== image.id
-              )
-            );
-          } catch (error) {
-            console.log(
-              "Portfolio delete error:",
-              error
-            );
+  try {
+    const currentUser = auth.currentUser;
 
-            setPortfolioImageError(
-              "Unable to delete portfolio image. Please try again."
-            );
-          }
-        },
-      },
-    ]
-  );
+    if (!currentUser) {
+      router.replace("/login");
+      return;
+    }
+
+    setDeletingPortfolioImage(true);
+    setDeletePortfolioImageError("");
+
+    await deleteBarberPortfolioImage({
+      barberId: currentUser.uid,
+      image: portfolioImageToDelete,
+    });
+
+    setPortfolioImages((currentImages) =>
+      currentImages.filter(
+        (portfolioImage) =>
+          portfolioImage.id !== portfolioImageToDelete.id
+      )
+    );
+    setPortfolioImageToDelete(null);
+  } catch (error) {
+    console.log(
+      "Portfolio delete error:",
+      error
+    );
+
+    setDeletePortfolioImageError(
+      "Unable to delete portfolio image. Please try again."
+    );
+  } finally {
+    setDeletingPortfolioImage(false);
+  }
+}
+function handleCloseSaveConfirmation() {
+  setSaveConfirmationVisible(false);
+  router.back();
 }
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-app-background">
+      <ConfirmationModal
+        visible={saveConfirmationVisible}
+        title="Profile Updated"
+        detail="Your barber profile has been saved."
+        confirmLabel="OK"
+        onClose={handleCloseSaveConfirmation}
+      />
+      <ConfirmDeleteModal
+        visible={Boolean(portfolioImageToDelete)}
+        title="Delete portfolio image?"
+        detail="This image will be permanently removed from your portfolio."
+        confirmLabel="Delete"
+        loadingLabel="Deleting..."
+        loading={deletingPortfolioImage}
+        error={deletePortfolioImageError}
+        onClose={closeDeletePortfolioImageModal}
+        onConfirm={handleConfirmDeletePortfolioImage}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -384,19 +390,9 @@ function handleDeletePortfolioImage(image) {
           contentContainerClassName="px-6 py-6"
           showsVerticalScrollIndicator={false}
         >
+          <EditProfileHeader onBack={() => router.back()} />
 
-          <View className="mb-8">
-            <Text className="text-3xl font-bold text-black">
-              Edit Barber Profile
-            </Text>
-
-            <Text className="mt-2 text-base text-gray-500">
-              Update the information clients will see on your profile.
-            </Text>
-          </View>
-          
-
-          <View className="rounded-3xl border border-gray-200 bg-white p-5">
+          <View className="rounded-3xl bg-app-surface p-5">
             
             <View className="items-center mb-6">
   {displayedProfileImage ? (
@@ -405,8 +401,8 @@ function handleDeletePortfolioImage(image) {
       className="w-28 h-28 rounded-full"
     />
   ) : (
-    <View className="w-28 h-28 rounded-full bg-gray-200 items-center justify-center">
-      <Text className="text-gray-500">
+    <View className="w-28 h-28 rounded-full bg-app-primary-soft items-center justify-center">
+      <Text className="text-app-primary font-semibold">
         No Photo
       </Text>
     </View>
@@ -417,26 +413,26 @@ function handleDeletePortfolioImage(image) {
     disabled={uploadingProfileImage}
     className={`mt-4 px-5 py-3 rounded-xl ${
       uploadingProfileImage
-        ? "bg-gray-400"
-        : "bg-black"
+        ? "bg-app-disabled"
+        : "bg-app-primary active:bg-app-primary-pressed"
     }`}
   >
     {uploadingProfileImage ? (
       <View className="flex-row items-center gap-2">
-        <ActivityIndicator />
-        <Text className="text-white font-semibold">
+        <ActivityIndicator color="white" />
+        <Text className="text-app-text-inverse font-semibold">
           Uploading...
         </Text>
       </View>
     ) : (
-      <Text className="text-white font-semibold">
+      <Text className="text-app-text-inverse font-semibold">
         Change Profile Image
       </Text>
     )}
   </Pressable>
 
   {profileImageError ? (
-    <Text className="text-red-500 mt-2 text-center">
+    <Text className="text-app-error mt-2 text-center">
       {profileImageError}
     </Text>
   ) : null}
@@ -464,18 +460,10 @@ function handleDeletePortfolioImage(image) {
               multiline
             />
 
-            <FormInput
-              label="City"
-              value={city}
-              onChangeText={setCity}
-              placeholder="Indianapolis"
-            />
-
-            <FormInput
-              label="State"
-              value={stateValue}
-              onChangeText={setStateValue}
-              placeholder="IN"
+            <LocationPicker
+              value={location}
+              onChange={setLocation}
+              disabled={saving}
             />
 
             
@@ -486,21 +474,63 @@ function handleDeletePortfolioImage(image) {
               label="Specialties"
               value={specialties}
               onChangeText={setSpecialties}
-              placeholder="Curly hair, designs, beard work"
+              placeholder="Curly hair and designs and beard work"
             />
 
-            <Text className="-mt-2 mb-6 text-xs text-gray-400">
-              Separate specialties with commas.
-            </Text>
+            <View className="mb-6">
+              <View className="mb-4 flex-row items-center justify-between">
+                <Text className="text-lg font-bold text-app-text">
+                  Portfolio
+                </Text>
+
+                <Text className="text-sm text-app-text-muted">
+                  {portfolioImages.length}/{MAX_PORTFOLIO_IMAGES}
+                </Text>
+              </View>
+
+              {portfolioImages.length > 0 ? (
+                <View className="flex-row flex-wrap gap-3">
+                  {portfolioImages.map((image) => (
+                    <View key={image.id} className="relative">
+                      <Image
+                        source={{ uri: image.url }}
+                        className="h-28 w-28 rounded-xl"
+                      />
+
+                      <Pressable
+                        onPress={() => handleDeletePortfolioImage(image)}
+                        className="absolute right-1 top-1 h-7 w-7 items-center justify-center rounded-full bg-app-primary"
+                      >
+                        <Ionicons name="close" size={18} color="#FFFFFF" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className="rounded-2xl bg-app-surface-elevated px-4 py-6">
+                  <Text className="text-center text-app-text-muted">
+                    No portfolio images yet.
+                  </Text>
+                </View>
+              )}
+
+              {portfolioImageError ? (
+                <Text className="mt-2 text-center text-app-error">
+                  {portfolioImageError}
+                </Text>
+              ) : null}
+            </View>
 
             <Pressable
               onPress={handleSave}
               disabled={saving}
-              className={`rounded-2xl px-4 py-4 active:opacity-80 ${
-                saving ? "bg-gray-400" : "bg-black"
+              className={`rounded-2xl px-4 py-4 ${
+                saving
+                  ? "bg-app-disabled"
+                  : "bg-app-primary active:bg-app-primary-pressed"
               }`}
             >
-              <Text className="text-center text-base font-bold text-white">
+              <Text className="text-center text-base font-bold text-app-text-inverse">
                 {saving ? "Saving..." : "Save Changes"}
               </Text>
             </Pressable>
@@ -508,97 +538,13 @@ function handleDeletePortfolioImage(image) {
             <Pressable
               onPress={() => router.back()}
               disabled={saving}
-              className="mt-4 rounded-2xl border border-gray-300 bg-white px-4 py-4 active:opacity-80"
+              className="mt-4 rounded-2xl border border-app-border bg-app-surface px-4 py-4 active:bg-app-surface-elevated"
             >
-              <Text className="text-center text-base font-bold text-black">
+              <Text className="text-center text-base font-bold text-app-text">
                 Cancel
               </Text>
             </Pressable>
           </View>
-          <View className="mb-8">
-  <View className="mb-4 flex-row items-center justify-between">
-    <Text className="text-lg font-bold text-black">
-      Portfolio
-    </Text>
-
-    <Text className="text-sm text-gray-500">
-      {portfolioImages.length}/{MAX_PORTFOLIO_IMAGES}
-    </Text>
-  </View>
-
-  {portfolioImages.length > 0 ? (
-    <View className="flex-row flex-wrap gap-3">
-      {portfolioImages.map((image) => (
-  <View
-    key={image.id}
-    className="relative"
-  >
-    <Image
-      source={{ uri: image.url }}
-      className="h-28 w-28 rounded-xl"
-    />
-
-    <Pressable
-      onPress={() =>
-        handleDeletePortfolioImage(image)
-      }
-      className="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-1"
-    >
-      <Text className="text-xs font-bold text-white">
-        Delete
-      </Text>
-    </Pressable>
-  </View>
-))}
-    </View>
-  ) : (
-    <View className="rounded-2xl bg-gray-100 px-4 py-6">
-      <Text className="text-center text-gray-500">
-        No portfolio images yet.
-      </Text>
-    </View>
-  )}
-
-  <Pressable
-    onPress={handlePortfolioImageUpload}
-    disabled={
-      uploadingPortfolioImage ||
-      portfolioImages.length >= MAX_PORTFOLIO_IMAGES
-    }
-    className={`mt-4 rounded-xl px-5 py-3 ${
-      uploadingPortfolioImage ||
-      portfolioImages.length >= MAX_PORTFOLIO_IMAGES
-        ? "bg-gray-400"
-        : "bg-black"
-    }`}
-  >
-    {uploadingPortfolioImage ? (
-      <View className="flex-row items-center justify-center gap-2">
-        <ActivityIndicator />
-
-        <Text className="font-semibold text-white">
-          Uploading...
-        </Text>
-      </View>
-    ) : (
-      <Text className="text-center font-semibold text-white">
-        Add Portfolio Image
-      </Text>
-    )}
-  </Pressable>
-
-  {portfolioImages.length >= MAX_PORTFOLIO_IMAGES ? (
-    <Text className="mt-2 text-center text-sm text-gray-500">
-      Portfolio image limit reached.
-    </Text>
-  ) : null}
-
-  {portfolioImageError ? (
-    <Text className="mt-2 text-center text-red-500">
-      {portfolioImageError}
-    </Text>
-  ) : null}
-</View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
