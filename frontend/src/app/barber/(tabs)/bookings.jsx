@@ -721,7 +721,7 @@ export default function BarberBookings() {
       }
 
       loadBookings({
-        useCache: true,
+        useCache: false,
       });
     });
 

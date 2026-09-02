@@ -971,7 +971,7 @@ export default function BarberDashboardScreen() {
       }
 
       loadDashboardData({
-        useCache: true,
+        useCache: false,
       });
     });
 

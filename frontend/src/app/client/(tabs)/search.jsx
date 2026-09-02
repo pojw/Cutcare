@@ -280,7 +280,7 @@ export default function ClientSearch() {
 
       loadSearchData({
         showLoader: true,
-        useCache: true,
+        useCache: false,
       });
     });
 

@@ -1,3 +1,16 @@
+import json
+from functools import lru_cache
+from pathlib import Path
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+from app.models.confirmed_hair_profile import ConfirmedHairProfile
+from app.models.knowledge import KnowledgeDocument
+
+
+MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+
 HAIRCUT_KNOWLEDGE = [
     {
         "id": "textured-crop-basics",
@@ -90,42 +103,42 @@ HAIRCUT_KNOWLEDGE = [
 ]
 
 
+@lru_cache(maxsize=1)
+def load_embedding_model() -> SentenceTransformer:
+    return SentenceTransformer(MODEL_NAME)
+
+
 def get_relevant_haircut_knowledge(
     user_message: str,
     hair_profile: dict | None = None,
 ) -> list[dict]:
-    normalized_message = " ".join(user_message.lower().split())
+    model = load_embedding_model()
+    ids, embeddings = load_knowledge_index()
 
-    scored_entries = []
-
-    for entry in HAIRCUT_KNOWLEDGE:
-        score = 0
-
-        title = entry.get("title", "").lower()
-        tags = entry.get("tags", [])
-
-        if title and title in normalized_message:
-            score += 3
-
-        for tag in tags:
-            normalized_tag = tag.lower().strip()
-
-            if normalized_tag and normalized_tag in normalized_message:
-                # Multi-word phrases are usually more specific.
-                score += 2 if " " in normalized_tag else 1
-
-        if score > 0:
-            scored_entries.append((score, entry))
-
-    scored_entries.sort(
-        key=lambda item: item[0],
-        reverse=True,
+    retrieval_query = build_retrieval_query(
+        user_message=user_message,
+        hair_profile=hair_profile,
     )
 
-    return [
-        entry
-        for _, entry in scored_entries[:3]
-    ]
+    query_embedding = model.encode(
+        retrieval_query,
+        normalize_embeddings=True,
+    )
+
+    similarities = embeddings @ query_embedding
+
+    top_indexes = np.argsort(similarities)[::-1][:3]
+
+    relevant_documents = []
+
+    for index in top_indexes:
+        document_id = str(ids[index])
+        document = get_knowledge_document_by_id(document_id)
+
+        if document:
+            relevant_documents.append(document.model_dump())
+
+    return relevant_documents
 
 
 if __name__ == "__main__":
@@ -139,3 +152,74 @@ if __name__ == "__main__":
         print(result["title"])
         print(result["content"])
         print()
+
+
+def build_searchable_text(document: KnowledgeDocument) -> str:
+    tags = ", ".join(document.tags)
+
+    return (
+        f"Title: {document.title}. "
+        f"Category: {document.category}. "
+        f"Tags: {tags}. "
+        f"Knowledge: {document.content}"
+    )
+
+
+@lru_cache(maxsize=1)
+def load_knowledge_documents() -> list[KnowledgeDocument]:
+    knowledge_path = (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "rag_docs"
+        / "haircuts.json"
+    )
+
+    with knowledge_path.open("r", encoding="utf-8") as knowledge_file:
+        raw_documents = json.load(knowledge_file)
+
+    return [
+        KnowledgeDocument.model_validate(raw_document)
+        for raw_document in raw_documents
+    ]
+
+
+def get_knowledge_document_by_id(document_id: str) -> KnowledgeDocument | None:
+    documents = load_knowledge_documents()
+
+    for document in documents:
+        if document.id == document_id:
+            return document
+
+    return None
+
+
+@lru_cache(maxsize=1)
+def load_knowledge_index() -> tuple[np.ndarray, np.ndarray]:
+    index_path = (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "rag_index"
+        / "haircuts_index.npz"
+    )
+
+    index_data = np.load(index_path)
+
+    return index_data["ids"], index_data["embeddings"]
+
+
+def build_retrieval_query(
+    user_message: str,
+    hair_profile: dict | None = None,
+) -> str:
+    if not hair_profile:
+        return user_message
+
+    query_parts = [user_message]
+
+    for field in ConfirmedHairProfile.RETRIEVAL_QUERY_FIELDS:
+        value = hair_profile.get(field)
+
+        if value is not None:
+            query_parts.append(f"{field}: {value}")
+
+    return ". ".join(query_parts)

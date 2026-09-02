@@ -6,6 +6,7 @@ from openai import (
     RateLimitError,
 )
 import re
+from typing import Any
 
 from app.core.config import settings
 
@@ -137,6 +138,8 @@ def generate_llm_response(
         ) from exc
 
     if not completion.choices:
+        print_llm_response_debug(completion)
+
         raise LLMInvalidResponseError(
             "LLM returned no completion choices."
         )
@@ -144,6 +147,8 @@ def generate_llm_response(
     generated_text = completion.choices[0].message.content
 
     if not generated_text:
+        print_llm_response_debug(completion)
+
         raise LLMInvalidResponseError(
             "LLM returned an empty response."
         )
@@ -152,11 +157,35 @@ def generate_llm_response(
    
     
     if not cleaned_text:
+        print_llm_response_debug(completion)
+
         raise LLMInvalidResponseError(
             "LLM returned only whitespace."
         )
 
     return cleaned_text
+
+
+def print_llm_response_debug(completion: Any) -> None:
+    try:
+        choice = completion.choices[0] if completion.choices else None
+        finish_reason = getattr(choice, "finish_reason", None)
+        message = getattr(choice, "message", None)
+        content = getattr(message, "content", None)
+
+        print(
+            "LLM invalid response debug:",
+            {
+                "finish_reason": finish_reason,
+                "content_type": type(content).__name__,
+                "content_preview": repr(content)[:300],
+            },
+        )
+    except Exception as exc:
+        print(
+            "LLM invalid response debug failed:",
+            repr(exc),
+        )
 
 def create_llm_client() -> OpenAI:
     if not settings.OPENAI_API_KEY:

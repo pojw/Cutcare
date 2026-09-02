@@ -1,0 +1,129 @@
+[
+  {
+    "id": "low_taper_fade",
+    "title": "Low taper fade",
+    "category": "haircut",
+    "tags": ["fade", "taper", "low maintenance", "professional"],
+    "content": "A low taper fade gradually shortens the hair around the sideburns and neckline while keeping more length around the sides and top. It works well for clients who want a clean shape without a dramatic skin fade. It is usually easy to maintain and can look professional."
+  },
+  {
+    "id": "textured_crop",
+    "title": "Textured crop",
+    "category": "haircut",
+    "tags": ["texture", "short hair", "thick hair", "low maintenance"],
+    "content": "A textured crop is a short haircut with choppy or point-cut texture on top. It works well for thick hair because it removes bulk and adds movement. It can be styled with a matte clay or paste for a natural finish."
+  },
+  {
+    "id": "matte_clay",
+    "title": "Matte clay",
+    "category": "product",
+    "tags": ["styling product", "matte finish", "texture", "thick hair"],
+    "content": "Matte clay gives hair texture and hold without shine. It is useful for short to medium styles, textured crops, messy looks, and thicker hair. A small amount should be warmed in the hands before applying evenly through dry or slightly damp hair."
+  },
+  {
+  "id": "mid_fade",
+  "title": "Mid fade",
+  "category": "haircut",
+  "tags": ["fade", "medium fade", "clean look", "short sides"],
+  "content": "A mid fade starts around the middle of the sides and creates a balanced contrast between the top and sides. It is sharper than a low fade but not as bold as a high fade. It works with many top styles, including curls, waves, crops, and comb overs."
+},
+{
+  "id": "high_skin_fade",
+  "title": "High skin fade",
+  "category": "haircut",
+  "tags": ["fade", "skin fade", "bold look", "short sides", "high maintenance"],
+  "content": "A high skin fade takes the sides very short and starts the fade high on the head. It creates a strong contrast and a sharp, modern look. It usually needs more frequent barber visits to stay clean because the grow-out is more noticeable."
+},
+{
+  "id": "burst_fade",
+  "title": "Burst fade",
+  "category": "haircut",
+  "tags": ["fade", "curly hair", "mohawk", "modern look", "texture"],
+  "content": "A burst fade curves around the ear and leaves more length toward the back. It is often used with curly tops, mohawks, mullets, and textured styles. It gives a more stylish and expressive shape than a standard taper or fade."
+},
+{
+  "id": "drop_fade",
+  "title": "Drop fade",
+  "category": "haircut",
+  "tags": ["fade", "head shape", "modern look", "short sides"],
+  "content": "A drop fade follows the shape of the head and drops lower behind the ear. It can make the haircut look more natural from the side and back. It works well when the client wants a fade with more shape than a straight fade line."
+},
+{
+  "id": "classic_taper",
+  "title": "Classic taper",
+  "category": "haircut",
+  "tags": ["taper", "professional", "natural look", "low maintenance"],
+  "content": "A classic taper gradually shortens the hair around the neckline and sideburns without exposing much skin. It keeps the haircut clean while still looking natural. It is a good option for professional settings or clients who do not want a dramatic fade."
+},
+{
+  "id": "crew_cut",
+  "title": "Crew cut",
+  "category": "haircut",
+  "tags": ["short hair", "low maintenance", "clean look", "straight hair", "thick hair"],
+  "content": "A crew cut is short on top with even shorter sides. It is simple, clean, and easy to maintain. It works well for clients who want a neat haircut that needs little daily styling."
+},
+{
+  "id": "buzz_cut",
+  "title": "Buzz cut",
+  "category": "haircut",
+  "tags": ["very short hair", "low maintenance", "simple", "masculine look"],
+  "content": "A buzz cut is clipped very short all over the head, sometimes with a fade or taper added to the sides. It is one of the easiest haircuts to maintain. It can highlight head shape and facial features, so it works best when the client is comfortable with a very short look."
+},
+{
+  "id": "french_crop",
+  "title": "French crop",
+  "category": "haircut",
+  "tags": ["short hair", "fringe", "texture", "low maintenance", "thick hair"],
+  "content": "A French crop keeps the top short and textured with a small fringe at the front. It works well for thick hair because it can reduce bulk while keeping shape. It is usually easy to style with matte product."
+},
+{
+  "id": "side_part",
+  "title": "Side part",
+  "category": "haircut",
+  "tags": ["classic", "professional", "medium length", "straight hair", "wavy hair"],
+  "content": "A side part is a classic style where the hair is cut and styled to separate naturally or cleanly to one side. It can look polished and professional. It works best when the top has enough length to comb into place."
+},
+{
+  "id": "slick_back",
+  "title": "Slick back",
+  "category": "haircut",
+  "tags": ["medium length", "classic", "pomade", "straight hair", "wavy hair"],
+  "content": "A slick back keeps enough length on top to brush the hair backward. It can be paired with a taper, fade, or longer sides. It usually needs a styling product such as pomade, cream, or gel depending on the desired shine and hold."
+},
+{
+  "id": "pompadour",
+  "title": "Pompadour",
+  "category": "haircut",
+  "tags": ["volume", "medium length", "classic", "high maintenance", "thick hair"],
+  "content": "A pompadour has volume at the front with the hair styled up and back. It works best when the client has enough density and length on top. It usually takes more styling time and product than low-maintenance cuts."
+},
+{
+  "id": "curly_taper",
+  "title": "Curly taper",
+  "category": "haircut",
+  "tags": ["curly hair", "taper", "natural texture", "low maintenance"],
+  "content": "A curly taper keeps the natural curl pattern on top while cleaning up the sideburns, neckline, and edges. It is a good option for clients who want shape without removing too much curl volume. It can be easier to grow out than a skin fade."
+},
+{
+  "id": "curly_fringe",
+  "title": "Curly fringe",
+  "category": "haircut",
+  "tags": ["curly hair", "fringe", "texture", "medium length", "modern look"],
+  "content": "A curly fringe leaves length and curl definition toward the front of the head. It works well when the client wants a more relaxed style with natural movement. The sides can be tapered or faded depending on how much contrast the client wants."
+},
+{
+  "id": "wolf_cut",
+  "title": "Wolf cut",
+  "category": "haircut",
+  "tags": ["layers", "medium length", "shaggy", "texture", "high volume"],
+  "content": "A wolf cut uses heavy layers to create volume around the top and movement through the sides and back. It has a shaggy, expressive shape. It works best for clients who want a less polished style with visible texture."
+},
+{
+  "id": "modern_mullet",
+  "title": "Modern mullet",
+  "category": "haircut",
+  "tags": ["mullet", "long back", "texture", "bold look", "modern look"],
+  "content": "A modern mullet keeps more length in the back while shaping the sides and top in a cleaner, more current way. It can be paired with a burst fade, taper, or textured top. It is best for clients who want a bold style with personality."
+}
+  
+]

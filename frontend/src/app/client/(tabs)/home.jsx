@@ -461,15 +461,34 @@ function MyBarbersSection({ myBarbers }) {
       </View>
 
       {myBarbers.length === 0 ? (
-        <View className="mt-3 rounded-2xl border border-app-border bg-app-surface p-4">
-          <Text className="text-base font-semibold text-app-text">
-            View your Barbers
-          </Text>
+        <Pressable
+          onPress={() => router.push("/client/search")}
+          className="mt-3 rounded-2xl border border-app-border bg-app-surface p-4 active:bg-app-surface-elevated"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-4">
+              <Text className="text-base font-semibold text-app-text">
+                Find Barber
+              </Text>
 
-          <Text className="mt-2 text-sm text-app-text-secondary">
-            Book with a barber and they’ll show up here for quick access.
+              <Text className="mt-2 text-sm text-app-text-secondary">
+                Search for a barber and book your first appointment.
+              </Text>
+            </View>
+
+            <View className="h-11 w-11 items-center justify-center rounded-full bg-app-primary-soft">
+              <Ionicons
+                name="search"
+                size={22}
+                color="#1677FF"
+              />
+            </View>
+          </View>
+
+          <Text className="mt-4 text-sm font-semibold text-app-primary">
+            Start searching
           </Text>
-        </View>
+        </Pressable>
       ) : (
         <ScrollView
           horizontal
@@ -635,13 +654,13 @@ function PreviousNotesSection({
       <Text className="text-base font-semibold text-app-text">
         {notesSort === "favorites"
           ? "No favorite notes yet"
-          : "No notes yet"}
+          : "Write down your thoughts for next cut"}
       </Text>
 
       <Text className="mt-2 text-sm text-app-text-secondary">
         {notesSort === "favorites"
           ? "Favorite notes will show here for quick access."
-          : "Save haircut reminders here, like what to ask for next time or what a barber did well."}
+          : "Save what you liked, what to change, or what to ask your barber next time."}
       </Text>
     </View>
   ) : (
@@ -1107,7 +1126,7 @@ const [
 
       loadHomeData({
         showLoader: true,
-        useCache: true,
+        useCache: false,
       });
     });
 
@@ -1138,7 +1157,7 @@ const handleRefresh = useCallback(async () => {
   }
 
   setEditingNote(null);
-  setNoteTitle("");
+  setNoteTitle("Write down your thoughts for next cut");
   setNoteBody("");
   setSelectedBarberId(null);
   setNoteIsFavorite(false);

@@ -9,7 +9,7 @@ import {
   View,
   Modal,
 } from "react-native";
-import { useState ,useEffect , useRef,
+import { useState ,useEffect , useRef, useCallback,
 } from "react";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@/components/icons/AppIcon";
@@ -53,7 +53,7 @@ const isPinned =
       }`}
     >
       <View
-        className={`rounded-2xl px-4 py-3 ${
+        className={`rounded-2xl px-3 py-2.5 ${
           isUser
             ? "rounded-br-md bg-app-primary"
             : "rounded-bl-md bg-app-primary"
@@ -223,6 +223,19 @@ const [noteBody, setNoteBody] =
 
 const [noteFormError, setNoteFormError] =
   useState("");
+const scrollViewRef = useRef(null);
+
+const scrollToBottom = useCallback((animated = true) => {
+  requestAnimationFrame(() => {
+    scrollViewRef.current?.scrollToEnd({ animated });
+  });
+}, []);
+
+useEffect(() => {
+  if (messages.length > 0) {
+    scrollToBottom(true);
+  }
+}, [messages.length, scrollToBottom]);
 
 
 useEffect(() => {
@@ -400,11 +413,12 @@ const hasRealMessages = messages.some(
     <KeyboardAvoidingView
       className="flex-1 bg-app-background"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
-      <SafeAreaView className="flex-1">
+      <SafeAreaView edges={["top"]} className="flex-1">
         {/* Header */}
 <View className="border-b border-app-border-subtle bg-app-background">
-  <View className="px-6 py-6">
+  <View className="px-4 py-3">
   <View className="flex-row items-center">
     <Pressable
       onPress={() => router.back()}
@@ -421,7 +435,7 @@ const hasRealMessages = messages.some(
       numberOfLines={1}
       adjustsFontSizeToFit
       minimumFontScale={0.75}
-      className="flex-1 text-center text-2xl font-bold text-app-text"
+      className="flex-1 text-center text-xl font-bold text-app-text"
     >
       AI Hair <Text className="text-app-primary">Assistant</Text>
     </Text>
@@ -433,7 +447,7 @@ const hasRealMessages = messages.some(
 
 
   {!isCheckingProfile && (
-    <View className="mx-6 mb-3 flex-row items-center justify-between rounded-xl bg-app-surface px-3 py-2">
+    <View className="mx-4 mb-2 flex-row items-center justify-between rounded-xl bg-app-surface px-3 py-2">
       <Pressable
         onPress={
           hasConfirmedProfile
@@ -484,11 +498,13 @@ const hasRealMessages = messages.some(
 
         {/* Messages Area */}
         <ScrollView
+  ref={scrollViewRef}
   className="flex-1 px-4"
   contentContainerStyle={{
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 12,
+    paddingBottom: 12,
   }}
+  onContentSizeChange={() => scrollToBottom(true)}
 >
   {messages.map((message) => (
     <ChatBubble
@@ -506,7 +522,7 @@ const hasRealMessages = messages.some(
   </Text>
 ) : null}
         {/* Input Area */}
-        <View className="border-t border-app-border-subtle bg-app-background px-4 pb-8 pt-3">
+        <View className="border-t border-app-border-subtle bg-app-background px-3 pb-3 pt-2">
           <View className="flex-row items-end gap-2">
             <TextInput
   value={input}
@@ -515,12 +531,12 @@ const hasRealMessages = messages.some(
   multiline
   editable={!isSending}
   placeholderTextColor="#8292A6"
-  className="max-h-32 min-h-12 flex-1 rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
+  className="max-h-24 min-h-11 flex-1 rounded-2xl border border-app-border bg-app-surface px-3 py-2 text-base text-app-text"
 />
 <TouchableOpacity
   onPress={handleSend}
   disabled={isSending}
-  className={`h-12 justify-center rounded-2xl px-4 ${
+  className={`h-11 justify-center rounded-2xl px-3 ${
     isSending ? "bg-app-disabled" : "bg-app-primary"
   }`}
 >

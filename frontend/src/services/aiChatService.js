@@ -18,7 +18,7 @@ export async function sendChatRecommendation({
     throw new Error("Message cannot be empty.");
   }
 
-  const idToken = await currentUser.getIdToken(true);
+  const idToken = await currentUser.getIdToken();
 
   const response = await fetch(
     `${AI_API_BASE_URL}/chat/recommend`,
@@ -36,11 +36,18 @@ export async function sendChatRecommendation({
     }
   );
 
-  let data;
+  const responseText = await response.text();
+  let data = null;
 
   try {
-    data = await response.json();
+    data = responseText ? JSON.parse(responseText) : null;
   } catch {
+    if (!response.ok) {
+      throw new Error(
+        responseText || "Unable to get an AI recommendation."
+      );
+    }
+
     throw new Error("The AI server returned an invalid response.");
   }
 

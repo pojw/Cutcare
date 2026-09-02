@@ -30,6 +30,10 @@ import {
 import { filterAvailableSlots } from "../../../utils/filterAvailableSlots";
 import { getBarberBookingsByDate } from "../../../services/bookingService";
 import { createBooking } from "../../../services/createBooking";
+import {
+  getBarberCalendarInfo,
+  getBlockingCalendarEventsForDate,
+} from "../../../services/barberCalendarService";
 
 
 //Messages 
@@ -406,14 +410,22 @@ async function handleDateSelection(day) {
       totalDuration
     );
 
-    const existingBookings = await getBarberBookingsByDate(
-      barberData.id,
+    const [existingBookings, calendarInfo] = await Promise.all([
+      getBarberBookingsByDate(
+        barberData.id,
+        day.id
+      ),
+      getBarberCalendarInfo(barberData.id),
+    ]);
+
+    const blockingCalendarEvents = getBlockingCalendarEventsForDate(
+      calendarInfo,
       day.id
     );
 
     const validSlots = filterAvailableSlots(
       candidateSlots,
-      existingBookings
+      [...existingBookings, ...blockingCalendarEvents]
     );
 
     setAvailableSlots(validSlots);

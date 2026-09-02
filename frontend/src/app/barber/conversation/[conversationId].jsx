@@ -66,6 +66,11 @@ export default function BarberConversationScreen() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const currentUser = auth.currentUser;
+  const scrollToBottom = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
 useFocusEffect(
   useCallback(() => {
     if (
@@ -186,9 +191,7 @@ useFocusEffect(
   }
 
   setTimeout(() => {
-    listRef.current?.scrollToEnd({
-      animated: true,
-    });
+    scrollToBottom(true);
   }, 100);
 },
       (error) => {
@@ -201,7 +204,7 @@ useFocusEffect(
       clearTimeout(resetTimer);
       unsubscribe();
     };
-  }, [conversationId,currentUser?.uid]);
+  }, [conversationId,currentUser?.uid, scrollToBottom]);
 
   async function handleLoadOlderMessages() {
     if (
@@ -291,8 +294,8 @@ useFocusEffect(
         }}
         className={
           isMyMessage
-            ? "mb-3 rounded-2xl bg-app-primary px-4 py-3"
-            : "mb-3 rounded-2xl border border-app-border bg-app-surface px-4 py-3"
+            ? "mb-2.5 rounded-2xl bg-app-primary px-3 py-2.5"
+            : "mb-2.5 rounded-2xl border border-app-border bg-app-surface px-3 py-2.5"
         }
       >
         <Text
@@ -342,13 +345,13 @@ useFocusEffect(
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-app-background">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app-background">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <View className="border-b border-app-border-subtle bg-app-background px-6 py-6">
+        <View className="border-b border-app-border-subtle bg-app-background px-4 py-3">
           <View className="flex-row items-center">
             <Pressable
               onPress={() => router.back()}
@@ -365,7 +368,7 @@ useFocusEffect(
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
-              className="flex-1 text-center text-2xl font-bold text-app-text"
+              className="flex-1 text-center text-xl font-bold text-app-text"
             >
               {conversation.clientName || "Client"}
             </Text>
@@ -379,7 +382,7 @@ useFocusEffect(
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerClassName="flex-grow px-4 py-5"
+          contentContainerClassName="flex-grow px-4 py-3"
           ListHeaderComponent={
             loadingOlderMessages ? (
               <View className="items-center pb-3">
@@ -397,7 +400,12 @@ useFocusEffect(
           onContentSizeChange={() => {
             if (shouldScrollToBottomRef.current) {
               shouldScrollToBottomRef.current = false;
-              listRef.current?.scrollToEnd({ animated: true });
+              scrollToBottom(true);
+            }
+          }}
+          onLayout={() => {
+            if (messages.length > 0) {
+              scrollToBottom(false);
             }
           }}
           onScroll={({ nativeEvent }) => {
@@ -408,7 +416,7 @@ useFocusEffect(
           scrollEventThrottle={16}
         />
 
-        <View className="border-t border-app-border-subtle bg-app-background px-4 pb-8 pt-3">
+        <View className="border-t border-app-border-subtle bg-app-background px-3 pb-3 pt-2">
           <View className="flex-row items-end gap-2">
             <TextInput
               value={messageText}
@@ -416,7 +424,7 @@ useFocusEffect(
               placeholder="Type a message..."
               placeholderTextColor="#8292A6"
               multiline
-              className="max-h-32 min-h-12 flex-1 rounded-2xl border border-app-border bg-app-surface px-4 py-3 text-base text-app-text"
+              className="max-h-24 min-h-11 flex-1 rounded-2xl border border-app-border bg-app-surface px-3 py-2 text-base text-app-text"
             />
 
             <Pressable
@@ -424,8 +432,8 @@ useFocusEffect(
               disabled={sending || !messageText.trim()}
               className={
                 sending || !messageText.trim()
-                  ? "h-12 justify-center rounded-2xl bg-app-disabled px-4"
-                  : "h-12 justify-center rounded-2xl bg-app-primary px-4 active:bg-app-primary-pressed"
+                  ? "h-11 justify-center rounded-2xl bg-app-disabled px-3"
+                  : "h-11 justify-center rounded-2xl bg-app-primary px-3 active:bg-app-primary-pressed"
               }
             >
               <Text className="font-semibold text-app-text-inverse">

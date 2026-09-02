@@ -161,7 +161,8 @@ const result = await analyzeHairProfile({
       console.log("Error analyzing hair profile:", error);
 
       setErrorMessage(
-        "Could not analyze your hair profile. Please try again."
+        error?.message ||
+          "Could not analyze your hair profile. Please try again."
       );
 
       submittingRef.current = false;

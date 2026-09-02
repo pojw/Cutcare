@@ -12,6 +12,7 @@ import {
 } from "firebase/storage";
 
 import { AI_API_BASE_URL } from "../config/api";
+import { CONFIRMED_HAIR_PROFILE_FIELDS } from "../contracts/confirmedHairProfileContract";
 import { auth, db, storage } from "../config/firebase";
 
 export async function getClientHairProfileState(clientId) {
@@ -195,7 +196,17 @@ export async function analyzeHairProfile({
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Failed to analyze hair profile");
+    let errorMessage = errorText || "Failed to analyze hair profile";
+
+    try {
+      const errorData = JSON.parse(errorText);
+
+      errorMessage = errorData?.detail || errorMessage;
+    } catch {
+      // Keep the plain text error when the server does not return JSON.
+    }
+
+    throw new Error(errorMessage);
   }
 
   return await response.json();
@@ -319,7 +330,7 @@ function getEditedFields({
 
   const editedFields = [];
 
-  Object.keys(confirmedProfile).forEach((fieldName) => {
+  CONFIRMED_HAIR_PROFILE_FIELDS.forEach((fieldName) => {
     const originalValue = editableOriginal[fieldName];
     const confirmedValue = confirmedProfile[fieldName];
 

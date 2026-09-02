@@ -830,7 +830,7 @@ export default function BarberCalendar() {
       }
 
       loadCalendarData({
-        useCache: true,
+        useCache: false,
       });
     });
 

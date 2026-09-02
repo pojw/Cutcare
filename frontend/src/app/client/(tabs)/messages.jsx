@@ -253,7 +253,7 @@ export default function ClientMessagesScreen() {
 
       loadConversationsData({
         showLoader: true,
-        useCache: true,
+        useCache: false,
       });
     });
 

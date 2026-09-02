@@ -376,7 +376,7 @@ useFocusEffect(
   useCallback(() => {
     loadClientBookings({
       showLoader: true,
-      useCache: true,
+      useCache: false,
     });
   }, [])
 );

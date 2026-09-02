@@ -374,7 +374,7 @@ export default function BarberClientsScreen() {
       }
 
       loadClients({
-        useCache: true,
+        useCache: false,
       });
     });
 

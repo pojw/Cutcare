@@ -187,7 +187,7 @@ export default function BarberMessagesScreen() {
       }
 
       loadConversationsData({
-        useCache: true,
+        useCache: false,
       });
     });
 

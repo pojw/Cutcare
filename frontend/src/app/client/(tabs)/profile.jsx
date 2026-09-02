@@ -194,7 +194,7 @@ export default function ClientProfile() {
     const timeoutId = setTimeout(() => {
       loadProfile({
         showLoader: true,
-        useCache: true,
+        useCache: false,
       });
     });
 

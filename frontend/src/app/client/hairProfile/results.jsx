@@ -187,6 +187,18 @@ export default function HairProfileResults() {
           Review the information below and correct anything that does not look right.
         </Text>
 
+        <View className="mb-4 flex-row items-start rounded-2xl bg-app-primary-soft px-4 py-3">
+          <Ionicons
+            name="information-circle-outline"
+            size={20}
+            color="#1677FF"
+          />
+
+          <Text className="ml-2 flex-1 text-sm leading-5 text-app-text-secondary">
+            Please specify any details that were not extracted from your photos.
+          </Text>
+        </View>
+
         <View>
           <LengthGuide />
 

@@ -5,6 +5,7 @@ from firebase_admin import firestore
 
 from app.core.config import settings
 from app.core.firebase import get_firestore_client
+from app.models.confirmed_hair_profile import ConfirmedHairProfile
 
 
 PROFILE_STATUS_NEEDS_REVIEW = "needs_review"
@@ -194,7 +195,9 @@ def get_active_confirmed_hair_profile(
     if not confirmed_profile:
         return None
 
+    validated_profile = ConfirmedHairProfile.model_validate(confirmed_profile)
+
     return {
         "profileId": active_profile_id,
-        "confirmedProfile": confirmed_profile,
+        "confirmedProfile": validated_profile.model_dump(exclude_none=True),
     }

@@ -104,7 +104,8 @@ function NotificationResponseHandler() {
 
       if (
         type === "booking_confirmed" ||
-        type === "booking_cancelled"
+        type === "booking_cancelled" ||
+        type === "appointment_reminder"
       ) {
         if (userData.role === "client") {
           router.push("/client/bookings");

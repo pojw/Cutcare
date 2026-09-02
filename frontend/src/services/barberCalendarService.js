@@ -175,6 +175,75 @@ export function normalizeCalendarInfo(value = {}) {
   };
 }
 
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey || "")
+    .split("-")
+    .map(Number);
+
+  return new Date(year, month - 1, day);
+}
+
+function normalizeRepeatDays(days) {
+  if (!Array.isArray(days)) {
+    return [];
+  }
+
+  return days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+}
+
+export function doesCalendarEventOccurOnDate(event, dateKey) {
+  if (!event?.date || !dateKey) {
+    return false;
+  }
+
+  if (!event.repeatRule || event.repeatRule === "none") {
+    return event.date === dateKey;
+  }
+
+  const eventDate = parseDateKey(event.date);
+  const targetDate = parseDateKey(dateKey);
+
+  if (Number.isNaN(eventDate.getTime()) || Number.isNaN(targetDate.getTime())) {
+    return false;
+  }
+
+  if (targetDate < eventDate) {
+    return false;
+  }
+
+  if (event.repeatRule === "daily") {
+    return true;
+  }
+
+  if (event.repeatRule === "specificDays") {
+    return normalizeRepeatDays(event.repeatDays).includes(targetDate.getDay());
+  }
+
+  return (
+    event.repeatRule === "weekly" &&
+    eventDate.getDay() === targetDate.getDay()
+  );
+}
+
+export function getBlockingCalendarEventsForDate(calendarInfo, dateKey) {
+  return normalizeCalendarInfo(calendarInfo).events
+    .filter((event) => {
+      if (!event?.startTime || !event?.endTime) {
+        return false;
+      }
+
+      return doesCalendarEventOccurOnDate(event, dateKey);
+    })
+    .map((event) => ({
+      id: event.id,
+      source: "calendar",
+      status: "confirmed",
+      appointmentDate: dateKey,
+      startTime: event.startTime,
+      endTime: event.endTime,
+    }));
+}
+
 export async function getBarberCalendarInfo(barberId) {
   if (!barberId) {
     throw new Error("Barber ID is required.");

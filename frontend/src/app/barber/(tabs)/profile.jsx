@@ -235,7 +235,7 @@ export default function BarberProfile() {
       }
 
       loadProfile({
-        useCache: true,
+        useCache: false,
       });
     });
 

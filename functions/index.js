@@ -10,6 +10,10 @@ const {
   onDocumentUpdated,
 } = require("firebase-functions/v2/firestore");
 
+const {
+  onSchedule,
+} = require("firebase-functions/v2/scheduler");
+
 const logger = require("firebase-functions/logger");
 const { Expo } = require("expo-server-sdk");
 
@@ -28,10 +32,76 @@ const db = getFirestore();
 const adminAuth = getAuth();
 const storage = getStorage();
 const expo = new Expo();
+const EASTERN_TIME_ZONE = "America/New_York";
 
 setGlobalOptions({
   maxInstances: 10,
 });
+
+function getDateStringForTimeZone(
+  date = new Date(),
+  timeZone = EASTERN_TIME_ZONE
+) {
+  const dateParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const values = {};
+
+  dateParts.forEach((part) => {
+    if (part.type !== "literal") {
+      values[part.type] = part.value;
+    }
+  });
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function formatTime12Hour(time24) {
+  if (!time24 || !time24.includes(":")) {
+    return "the scheduled time";
+  }
+
+  const [hourString, minuteString] = time24.split(":");
+  const hour24 = Number(hourString);
+
+  if (Number.isNaN(hour24)) {
+    return "the scheduled time";
+  }
+
+  const period = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+
+  return `${hour12}:${minuteString} ${period}`;
+}
+
+async function createNotificationIfMissing(
+  userId,
+  notificationId,
+  notificationData
+) {
+  const notificationRef = db.doc(
+    `users/${userId}/notifications/${notificationId}`
+  );
+
+  try {
+    await notificationRef.create(notificationData);
+
+    return true;
+  } catch (error) {
+    if (
+      error.code === 6 ||
+      error.code === "already-exists"
+    ) {
+      return false;
+    }
+
+    throw error;
+  }
+}
 
 async function sendPushToUser(
   userId,
@@ -657,6 +727,141 @@ exports.createNewMessageNotification = onDocumentCreated(
         senderId,
         recipientId,
         notificationId,
+      }
+    );
+  }
+);
+
+exports.sendDailyAppointmentReminders = onSchedule(
+  {
+    schedule: "0 7 * * *",
+    timeZone: EASTERN_TIME_ZONE,
+  },
+  async () => {
+    const appointmentDate =
+      getDateStringForTimeZone();
+
+    const bookingsSnapshot = await db
+      .collection("bookings")
+      .where("appointmentDate", "==", appointmentDate)
+      .get();
+
+    if (bookingsSnapshot.empty) {
+      logger.info(
+        "No appointment reminders to send.",
+        {
+          appointmentDate,
+        }
+      );
+
+      return;
+    }
+
+    let reminderCount = 0;
+
+    for (const bookingDocument of bookingsSnapshot.docs) {
+      const booking = bookingDocument.data();
+      const bookingId = bookingDocument.id;
+
+      if (booking.status !== "confirmed") {
+        continue;
+      }
+
+      const {
+        clientId,
+        barberId,
+        clientName,
+        barberName,
+        businessName,
+        startTime,
+      } = booking;
+
+      if (!clientId || !barberId) {
+        logger.error(
+          "Reminder skipped for booking missing participant IDs.",
+          {
+            bookingId,
+            appointmentDate,
+          }
+        );
+
+        continue;
+      }
+
+      const appointmentTime =
+        formatTime12Hour(startTime);
+      const barberDisplayName =
+        businessName ||
+        barberName ||
+        "your barber";
+      const clientDisplayName =
+        clientName ||
+        "your client";
+
+      const clientNotification = {
+        id: `appointment_reminder_client_${bookingId}_${appointmentDate}`,
+        userId: clientId,
+        title: "Appointment reminder",
+        body:
+          `You have a haircut today at ${appointmentTime} with ${barberDisplayName}.`,
+        actorId: barberId,
+      };
+
+      const barberNotification = {
+        id: `appointment_reminder_barber_${bookingId}_${appointmentDate}`,
+        userId: barberId,
+        title: "Appointment reminder",
+        body:
+          `${clientDisplayName} has a haircut today at ${appointmentTime}.`,
+        actorId: clientId,
+      };
+
+      for (const notification of [
+        clientNotification,
+        barberNotification,
+      ]) {
+        const wasCreated =
+          await createNotificationIfMissing(
+            notification.userId,
+            notification.id,
+            {
+              type: "appointment_reminder",
+              title: notification.title,
+              body: notification.body,
+              actorId: notification.actorId,
+              isRead: false,
+              createdAt: FieldValue.serverTimestamp(),
+              data: {
+                bookingId,
+                appointmentDate,
+              },
+            }
+          );
+
+        if (!wasCreated) {
+          continue;
+        }
+
+        await sendPushToUser(notification.userId, {
+          title: notification.title,
+          body: notification.body,
+          data: {
+            type: "appointment_reminder",
+            bookingId,
+            appointmentDate,
+          },
+        });
+
+        reminderCount += 1;
+      }
+    }
+
+    logger.info(
+      "Daily appointment reminders finished.",
+      {
+        appointmentDate,
+        reminderCount,
+        bookingCount: bookingsSnapshot.size,
       }
     );
   }

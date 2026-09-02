@@ -71,6 +71,11 @@ export default function ClientConversationScreen() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const currentUser = auth.currentUser;
+  const scrollToBottom = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
 useFocusEffect(
   useCallback(() => {
     if (
@@ -191,7 +196,7 @@ useFocusEffect(
   }
 
   setTimeout(() => {
-    listRef.current?.scrollToEnd({ animated: true });
+    scrollToBottom(true);
   }, 100);
 },
       (error) => {
@@ -204,7 +209,7 @@ useFocusEffect(
       clearTimeout(resetTimer);
       unsubscribe();
     };
-  }, [conversationId,currentUser?.uid]);
+  }, [conversationId,currentUser?.uid, scrollToBottom]);
 
   async function handleLoadOlderMessages() {
     if (
@@ -291,7 +296,7 @@ useFocusEffect(
           alignSelf: isMyMessage ? "flex-end" : "flex-start",
           maxWidth: "80%",
         }}
-        className={`mb-3 rounded-2xl px-4 py-3 ${
+        className={`mb-2.5 rounded-2xl px-3 py-2.5 ${
           isMyMessage
             ? "bg-app-primary"
             : "bg-app-surface-elevated"
@@ -344,13 +349,13 @@ useFocusEffect(
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-app-background">
+    <SafeAreaView edges={["top"]} className="flex-1 bg-app-background">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
-        <View className="border-b border-app-border-subtle px-5 py-4">
+        <View className="border-b border-app-border-subtle px-4 py-3">
           <View className="flex-row items-center">
             <Pressable
               onPress={() => router.back()}
@@ -380,7 +385,7 @@ useFocusEffect(
           data={messages}
           keyExtractor={(item) => item.id}
           renderItem={renderMessage}
-          contentContainerClassName="flex-grow px-5 py-4"
+          contentContainerClassName="flex-grow px-4 py-3"
           ListHeaderComponent={
             loadingOlderMessages ? (
               <View className="items-center pb-3">
@@ -398,7 +403,12 @@ useFocusEffect(
           onContentSizeChange={() => {
             if (shouldScrollToBottomRef.current) {
               shouldScrollToBottomRef.current = false;
-              listRef.current?.scrollToEnd({ animated: true });
+              scrollToBottom(true);
+            }
+          }}
+          onLayout={() => {
+            if (messages.length > 0) {
+              scrollToBottom(false);
             }
           }}
           onScroll={({ nativeEvent }) => {
@@ -409,21 +419,21 @@ useFocusEffect(
           scrollEventThrottle={16}
         />
 
-        <View className="border-t border-app-border-subtle bg-app-background px-4 py-3">
-          <View className="flex-row items-end rounded-2xl border border-app-border bg-app-surface px-4 py-2">
+        <View className="border-t border-app-border-subtle bg-app-background px-3 pb-3 pt-2">
+          <View className="flex-row items-end rounded-2xl border border-app-border bg-app-surface px-3 py-1.5">
             <TextInput
               value={messageText}
               onChangeText={setMessageText}
               placeholder="Type a message..."
               placeholderTextColor="#8292A6"
               multiline
-              className="max-h-28 flex-1 py-2 text-base text-app-text"
+              className="max-h-24 flex-1 py-2 text-base text-app-text"
             />
 
             <Pressable
               onPress={handleSendMessage}
               disabled={sending || !messageText.trim()}
-              className={`ml-3 h-11 w-11 items-center justify-center rounded-full ${
+              className={`ml-2 h-10 w-10 items-center justify-center rounded-full ${
                 sending || !messageText.trim()
                   ? "bg-app-disabled"
                   : "bg-app-primary active:bg-app-primary-pressed"
