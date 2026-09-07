@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 
 import { ProcessTabsCarousel } from "@/components/ProcessTabsCarousel";
 import { Section } from "@/components/Section";
+import { SiteHeader } from "@/components/SiteHeader";
 
 const pageDescription =
   "A resume project overview for CutCare, covering the problem, process, technical progress, and lessons behind the app build.";
@@ -20,48 +20,18 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      <section className="mx-auto max-w-5xl px-5 pb-12 pt-14 md:pb-16 md:pt-20">
+      <SiteHeader />
+      <section className="mx-auto max-w-6xl px-6 pb-8 pt-12 text-center sm:px-10">
         <div className="text-center">
-          <h1 className="text-4xl font-black tracking-normal text-cutcare-ink md:text-6xl">
+          <h1 className="text-3xl font-semibold leading-tight tracking-normal text-cutcare-ink sm:text-4xl">
             Project Overview
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-cutcare-body">
-            A personal software project documenting how I planned, built, and
-            iterated on a barber booking app while solving a real scheduling
-            problem from my own experience.
+          <p className="mx-auto mt-6 max-w-3xl text-base leading-8 text-cutcare-body">
+            CutCare is a personal full-stack project that turns barber
+            scheduling, client messaging, and haircut preferences into one
+            organized booking experience, making appointments easier to manage
+            for barbers and easier to request for clients.
           </p>
-        </div>
-
-        <div className="mx-auto mt-10 max-w-3xl rounded-[2rem] border border-cutcare-border bg-white p-5 shadow-soft">
-          <div className="flex items-center justify-between border-b border-cutcare-border pb-4">
-            <div>
-              <p className="text-sm font-bold text-cutcare-primary">
-                Project image placeholder
-              </p>
-              <p className="mt-1 text-2xl font-black text-cutcare-ink">
-                Actual app picture coming soon
-              </p>
-            </div>
-            <Image
-              src="/logo-glow.png"
-              alt=""
-              width={72}
-              height={72}
-              className="rounded-2xl"
-              priority
-            />
-          </div>
-          <div className="mt-5 flex aspect-[9/16] min-h-[32rem] items-center justify-center rounded-2xl border border-dashed border-cutcare-primary/40 bg-cutcare-soft p-6 text-center">
-            <div>
-              <p className="text-2xl font-black text-cutcare-ink">
-                CutCare app screenshot
-              </p>
-              <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-cutcare-body">
-                Placeholder for a real screen from the project, used to show
-                progress and implementation work.
-              </p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -78,7 +48,7 @@ export default function Home() {
             The project includes client and barber flows, booking management,
             messaging, notifications, profile data, and AI-assisted support. It
             also gave me practice dividing work across frontend, backend, and AI
-            systems while building toward an MVP.
+            systems.
           </p>
         </div>
       </Section>
@@ -103,64 +73,57 @@ export default function Home() {
             schedule, services, and booking rules could help customers get quick
             answers while reducing the amount of repetitive messaging.
           </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            I also wanted the app to respect how barbers actually work. Some
+            customers need a quick shape-up, some need a longer appointment, and
+            some need advice before they know what to book. CutCare was built
+            around that real back-and-forth instead of treating every haircut as
+            the same kind of calendar event.
+          </p>
         </div>
       </Section>
 
       <Section id="process" title="Process">
-        <div className="grid gap-6">
-          <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
-            <p className="text-base leading-8 text-cutcare-body">
-              I started by imagining the overall structure of the app and
-              writing down the requirements it needed to meet. From there, I
-              divided the work into frontend and backend/AI parts so both sides
-              could be built in parallel and reach a working MVP as quickly as
-              possible.
-            </p>
-            <p className="mt-5 text-base leading-8 text-cutcare-body">
-              Once the basic frontend information was on screen, I focused on
-              the backend systems that made the app feel real: messaging,
-              booking, and notifications. After that foundation was in place, I
-              came back for a frontend UI pass so the screens could start moving
-              from placeholders toward a clearer portfolio-ready project demo.
-            </p>
-            <p className="mt-5 text-base leading-8 text-cutcare-body">
-              On the AI side, I started building the RAG system by taking the
-              user&apos;s chatbot query, adding useful haircut profile context,
-              and sending that to the chatbot so it could return a stronger
-              response. Then I added a small knowledge base with common cuts,
-              reasons someone might choose them, and descriptions of each style.
-              The user&apos;s message can be vectorized and compared against that
-              knowledge base, giving the chatbot relevant context that reflects
-              my own haircut knowledge.
-            </p>
-          </div>
-
-          <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-5 shadow-sm">
-            <div className="flex min-h-[16rem] items-center justify-center rounded-lg border border-dashed border-cutcare-primary/40 bg-cutcare-soft p-6 text-center">
-              <div>
-                <p className="text-2xl font-black text-cutcare-ink">
-                  Process image placeholder
-                </p>
-                <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-cutcare-body">
-                  Future space for a workflow image, architecture sketch, or app
-                  build screenshot.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <ProcessTabsCarousel />
+        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+          <p className="text-base leading-8 text-cutcare-body">
+            I started by mapping the two main users: clients who need a simple
+            way to request a cut, and barbers who need control over their time,
+            services, and communication. That helped me separate the app into
+            client screens, barber screens, shared booking logic, and account
+            setup.
+          </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            After the core screens were in place, I focused on the systems that
+            made the app useful: booking requests, barber availability,
+            messaging, notifications, saved client notes, and calendar support.
+            Each feature was built around reducing the manual work that usually
+            happens through texts and separate calendar entries.
+          </p>
+          <p className="mt-5 text-base leading-8 text-cutcare-body">
+            The AI work came after that foundation. I connected chat responses
+            to haircut profile context and started building a small knowledge
+            base of styles, descriptions, and reasons someone might choose each
+            cut. That gave the assistant more useful context when answering
+            grooming questions or helping a client think through a style.
+          </p>
         </div>
       </Section>
 
       <Section id="full-results" title="Full Results">
         <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
           <p className="text-base leading-8 text-cutcare-body">
-            Placeholder for the final results section. This can later include
-            completed screens, what worked, what changed, and the strongest
-            technical outcomes from the CutCare MVP.
+            The strongest result is a working product foundation with separate
+            client and barber experiences, account onboarding, barber search,
+            booking management, messaging, notifications, profile details, and
+            AI-assisted haircut support. The project gave me practice connecting
+            mobile UI, Firebase data, cloud functions, and an AI service into
+            one app flow.
           </p>
         </div>
+      </Section>
+
+      <Section id="client-barber" title="Client and Barber Views">
+        <ProcessTabsCarousel />
       </Section>
     </>
   );

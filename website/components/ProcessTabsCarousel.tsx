@@ -7,30 +7,30 @@ type Audience = "client" | "barber";
 const slides: Record<Audience, { title: string; body: string }[]> = {
   client: [
     {
-      title: "Client placeholder 01",
-      body: "Future space for the screen where customers discover the barber, review details, and begin booking.",
+      title: "Discover a barber",
+      body: "Clients can search for a barber, review profile details, compare services, and start a booking from one focused flow.",
     },
     {
-      title: "Client placeholder 02",
-      body: "Future space for appointment requests, saved haircut context, and messages before the visit.",
+      title: "Request an appointment",
+      body: "The booking flow keeps the service, time, barber, and client details together so the request is easier to track.",
     },
     {
-      title: "Client placeholder 03",
-      body: "Future space for AI guidance, haircut profile details, and follow-up information.",
+      title: "Use haircut context",
+      body: "Saved styles, Hair Profile details, and AI guidance help clients explain what they want before they sit in the chair.",
     },
   ],
   barber: [
     {
-      title: "Barber placeholder 01",
-      body: "Future space for managing available slots, service details, and booking requests.",
+      title: "Manage availability",
+      body: "Barbers can set services, availability, and booking rules so clients see clearer options before reaching out.",
     },
     {
-      title: "Barber placeholder 02",
-      body: "Future space for messaging, customer notes, and repeated-question support.",
+      title: "Keep client details close",
+      body: "Messages, client notes, and booking history give the barber a cleaner way to remember what each client needs.",
     },
     {
-      title: "Barber placeholder 03",
-      body: "Future space for calendar organization, notifications, and shop workflow tools.",
+      title: "Reduce manual follow-up",
+      body: "Notifications, booking updates, and calendar support reduce the extra reminders and repeated questions around each appointment.",
     },
   ],
 };
@@ -86,7 +86,7 @@ export function ProcessTabsCarousel() {
           <p className="text-sm font-black uppercase tracking-[0.14em] text-cutcare-primary">
             {progressLabel}
           </p>
-          <h3 className="mt-4 text-2xl font-black text-cutcare-ink">
+          <h3 className="mt-4 text-xl font-semibold text-cutcare-ink sm:text-2xl">
             {activeSlide.title}
           </h3>
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-cutcare-body">
