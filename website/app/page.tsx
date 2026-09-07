@@ -26,12 +26,14 @@ export default function Home() {
           <h1 className="text-3xl font-semibold leading-tight tracking-normal text-cutcare-ink sm:text-4xl">
             Project Overview
           </h1>
-          <p className="mx-auto mt-6 max-w-3xl text-base leading-8 text-cutcare-body">
-            CutCare is a personal full-stack project that turns barber
-            scheduling, client messaging, and haircut preferences into one
-            organized booking experience, making appointments easier to manage
-            for barbers and easier to request for clients.
-          </p>
+          <div className="mx-auto mt-8 max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+            <p className="text-base leading-8 text-cutcare-body">
+              CutCare is a personal full-stack project that turns barber
+              scheduling, client messaging, and haircut preferences into one
+              organized booking experience, making appointments easier to manage
+              for barbers and easier to request for clients.
+            </p>
+          </div>
         </div>
       </section>
 
