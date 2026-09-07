@@ -40,12 +40,22 @@ a {
     linear-gradient(180deg, #ffffff 0%, #f8fbfe 50%, #ffffff 100%);
 }
 
+.legal-content {
+  font-size: 1rem;
+}
+
 .legal-content h2 {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
+  border-top: 1px solid #dbe5ee;
+  padding-top: 1.5rem;
   color: #0b1f3a;
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: 1.125rem;
+  font-weight: 700;
   letter-spacing: 0;
+}
+
+.legal-content p + p {
+  margin-top: 1rem;
 }
 
 .legal-content p,
@@ -55,8 +65,12 @@ a {
 }
 
 .legal-content ul {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   padding-left: 1.25rem;
+}
+
+.legal-content li + li {
+  margin-top: 0.5rem;
 }
 
 .legal-content strong {

@@ -23,7 +23,7 @@ export default function TermsPage() {
         description="These terms describe the basic rules for using CutCare as a client or barber."
       />
 
-      <article className="legal-content mx-auto max-w-4xl px-5 py-12">
+      <article className="legal-content mx-auto max-w-3xl px-6 py-10 sm:px-10">
         <p>
           <strong>Last updated:</strong> {site.lastUpdated}
         </p>

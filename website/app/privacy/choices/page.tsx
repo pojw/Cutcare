@@ -25,7 +25,7 @@ export default function PrivacyChoicesPage() {
         description="Learn how to access, update, delete, or ask questions about your CutCare account information."
       />
 
-      <article className="legal-content mx-auto max-w-4xl px-5 py-12">
+      <article className="legal-content mx-auto max-w-3xl px-6 py-10 sm:px-10">
         <p>
           <strong>Last updated:</strong> {site.lastUpdated}
         </p>

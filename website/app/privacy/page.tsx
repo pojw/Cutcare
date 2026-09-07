@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         description="This policy explains what CutCare collects, how the app uses information, and what is currently verified from the codebase."
       />
 
-      <article className="legal-content mx-auto max-w-4xl px-5 py-12">
+      <article className="legal-content mx-auto max-w-3xl px-6 py-10 sm:px-10">
         <p>
           <strong>Last updated:</strong> {site.lastUpdated}
         </p>

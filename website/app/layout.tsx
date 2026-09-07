@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -49,7 +48,6 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="page-shell">
-          <SiteHeader />
           <main>{children}</main>
           <SiteFooter />
         </div>
