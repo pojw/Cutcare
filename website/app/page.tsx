@@ -74,15 +74,7 @@ export default function Home() {
 
       <Section id="process" title="Process">
         <div className="mx-auto max-w-5xl">
-          <p className="mx-auto max-w-3xl text-center text-base leading-8 text-cutcare-body">
-            The main technical process connects the hair analysis system to the
-            recommendation chatbot. The app first gathers usable hair
-            information from client photos, saves a confirmed profile, and then
-            uses that profile during retrieval so the chatbot can return more
-            specific recommendations.
-          </p>
-
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {processSteps.map((step, index) => {
               const hasConnector = index !== 2 && index !== 5;
 
