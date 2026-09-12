@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const leftNavItems = [
   { href: "#process", label: "Process" },
@@ -32,9 +33,19 @@ export function SiteHeader() {
           <Link
             href="/"
             aria-label="CutCare home"
-            className="order-1 text-3xl font-black leading-tight tracking-normal text-cutcare-ink sm:text-4xl lg:order-2 lg:px-5"
+            className="order-1 inline-flex items-center justify-center gap-3 text-3xl font-black leading-tight tracking-normal text-cutcare-ink sm:text-4xl lg:order-2 lg:px-5"
           >
-            Cut<span className="text-cutcare-primary">Care</span>
+            <Image
+              src="/icon.png"
+              alt=""
+              width={40}
+              height={40}
+              className="h-9 w-9 rounded-lg sm:h-10 sm:w-10"
+              priority
+            />
+            <span>
+              Cut<span className="text-cutcare-primary">Care</span>
+            </span>
           </Link>
           <nav
             aria-label="Project results navigation"

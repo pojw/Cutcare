@@ -29,13 +29,13 @@ const processSteps = [
   },
   {
     number: "03",
-    title: "Confirm Hair Profile",
-    body: "The client reviews the generated profile, corrects anything that looks off, and saves the confirmed hair information.",
+    title: "Create Hair Profile",
+    body: "The client reviews the generated profile, corrects anything that looks off, and confirms the saved hair information.",
   },
   {
     number: "04",
     title: "Retrieve Similar Haircut Knowledge",
-    body: "The chatbot combines the user's question with the confirmed profile and retrieves relevant haircut knowledge using embeddings.",
+    body: "The chatbot combines the user's question with the confirmed profile and retrieves related haircut knowledge using embeddings.",
   },
   {
     number: "05",
@@ -44,8 +44,8 @@ const processSteps = [
   },
   {
     number: "06",
-    title: "Save Completed Result",
-    body: "The completed result stays connected to the client's profile so future recommendations can build from the same confirmed hair data.",
+    title: "Save Results",
+    body: "The completed recommendation stays connected to the client's confirmed hair profile so future guidance can build from the same hair data.",
   },
 ];
 
@@ -73,7 +73,7 @@ export default function Home() {
       </section>
 
       <Section id="process" title="Process">
-        <div className="mx-auto max-w-4xl rounded-lg border border-cutcare-border bg-white p-6 shadow-sm">
+        <div className="mx-auto max-w-5xl">
           <p className="mx-auto max-w-3xl text-center text-base leading-8 text-cutcare-body">
             The main technical process connects the hair analysis system to the
             recommendation chatbot. The app first gathers usable hair
@@ -82,37 +82,33 @@ export default function Home() {
             specific recommendations.
           </p>
 
-          <div className="relative mx-auto mt-8 max-w-3xl">
-            <div className="absolute left-5 top-5 h-[calc(100%-2.5rem)] w-px bg-cutcare-primary/30 md:left-1/2 md:-translate-x-1/2" />
-            <div className="grid gap-5">
-              {processSteps.map((step, index) => (
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {processSteps.map((step, index) => {
+              const hasConnector = index !== 2 && index !== 5;
+
+              return (
                 <div
                   key={step.number}
-                  className={`relative grid gap-4 md:grid-cols-[1fr_3rem_1fr] md:items-center ${
-                    index % 2 === 0 ? "" : "md:[&>*:first-child]:col-start-3"
+                  className={`relative rounded-lg border border-cutcare-border bg-white p-6 text-left shadow-sm ${
+                    hasConnector
+                      ? "lg:after:absolute lg:after:left-full lg:after:top-1/2 lg:after:z-10 lg:after:h-px lg:after:w-5 lg:after:bg-cutcare-primary/35 lg:after:content-['']"
+                      : ""
                   }`}
                 >
-                  <div
-                    className={`ml-14 rounded-lg border border-cutcare-border bg-cutcare-soft p-4 text-left md:ml-0 ${
-                      index % 2 === 0
-                        ? "md:col-start-1 md:text-right"
-                        : "md:col-start-3"
-                    }`}
-                  >
-                    <h3 className="text-base font-black text-cutcare-ink">
-                      {step.number}. {step.title}
+                  <div className="flex items-center gap-4">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-cutcare-primary/45 bg-cutcare-mist text-sm font-semibold text-cutcare-primary">
+                      {Number(step.number)}
+                    </span>
+                    <h3 className="text-xl font-semibold leading-snug text-cutcare-ink">
+                      {step.title}
                     </h3>
-                    <p className="mt-2 text-sm leading-6 text-cutcare-body">
-                      {step.body}
-                    </p>
                   </div>
-
-                  <div className="absolute left-0 top-4 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-cutcare-primary text-sm font-black text-white shadow-sm md:static md:col-start-2 md:row-start-1">
-                    {step.number}
-                  </div>
+                  <p className="mt-6 text-base leading-8 text-cutcare-body">
+                    {step.body}
+                  </p>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
       </Section>
