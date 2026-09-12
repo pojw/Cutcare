@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 const leftNavItems = [
+  { href: "#process", label: "Process" },
   { href: "#description", label: "Description" },
-  { href: "#problem-statement", label: "Problem Statement" },
 ];
 
 const rightNavItems = [
-  { href: "#process", label: "Process" },
+  { href: "#problem-statement", label: "Problem Statement" },
   { href: "#full-results", label: "Full Results" },
 ];
 

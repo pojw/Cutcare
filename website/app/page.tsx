@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { ProcessTabsCarousel } from "@/components/ProcessTabsCarousel";
 import { Section } from "@/components/Section";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -17,13 +16,49 @@ export const metadata: Metadata = {
   },
 };
 
+const processSteps = [
+  {
+    number: "01",
+    title: "Upload Hair Photos",
+    body: "The client adds front, side, and back photos so the app has enough visual context to understand their current hair.",
+  },
+  {
+    number: "02",
+    title: "Extract Hair Information",
+    body: "The AI service checks image quality, analyzes each angle, and turns the photos into structured hair profile fields.",
+  },
+  {
+    number: "03",
+    title: "Confirm Hair Profile",
+    body: "The client reviews the generated profile, corrects anything that looks off, and saves the confirmed hair information.",
+  },
+  {
+    number: "04",
+    title: "Retrieve Similar Haircut Knowledge",
+    body: "The chatbot combines the user's question with the confirmed profile and retrieves relevant haircut knowledge using embeddings.",
+  },
+  {
+    number: "05",
+    title: "Create Personalized Recommendation",
+    body: "The RAG response uses the user's hair profile and retrieved style context to suggest cuts, products, and barber-ready notes.",
+  },
+  {
+    number: "06",
+    title: "Save Completed Result",
+    body: "The completed result stays connected to the client's profile so future recommendations can build from the same confirmed hair data.",
+  },
+];
+
 export default function Home() {
   return (
     <>
       <SiteHeader />
-      <section className="mx-auto max-w-6xl px-6 pb-8 pt-12 text-center sm:px-10">
+      <section
+        id="project-overview"
+        className="mx-auto max-w-6xl scroll-mt-24 px-6 pb-8 pt-12 text-center sm:px-10"
+      >
         <div className="text-center">
-          <h1 className="text-3xl font-semibold leading-tight tracking-normal text-cutcare-ink sm:text-4xl">
+          <h1 className="text-2xl font-semibold leading-tight tracking-normal text-cutcare-ink sm:text-3xl">
             Project Overview
           </h1>
           <div className="mx-auto mt-8 max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
@@ -36,6 +71,51 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <Section id="process" title="Process">
+        <div className="mx-auto max-w-4xl rounded-lg border border-cutcare-border bg-white p-6 shadow-sm">
+          <p className="mx-auto max-w-3xl text-center text-base leading-8 text-cutcare-body">
+            The main technical process connects the hair analysis system to the
+            recommendation chatbot. The app first gathers usable hair
+            information from client photos, saves a confirmed profile, and then
+            uses that profile during retrieval so the chatbot can return more
+            specific recommendations.
+          </p>
+
+          <div className="relative mx-auto mt-8 max-w-3xl">
+            <div className="absolute left-5 top-5 h-[calc(100%-2.5rem)] w-px bg-cutcare-primary/30 md:left-1/2 md:-translate-x-1/2" />
+            <div className="grid gap-5">
+              {processSteps.map((step, index) => (
+                <div
+                  key={step.number}
+                  className={`relative grid gap-4 md:grid-cols-[1fr_3rem_1fr] md:items-center ${
+                    index % 2 === 0 ? "" : "md:[&>*:first-child]:col-start-3"
+                  }`}
+                >
+                  <div
+                    className={`ml-14 rounded-lg border border-cutcare-border bg-cutcare-soft p-4 text-left md:ml-0 ${
+                      index % 2 === 0
+                        ? "md:col-start-1 md:text-right"
+                        : "md:col-start-3"
+                    }`}
+                  >
+                    <h3 className="text-base font-black text-cutcare-ink">
+                      {step.number}. {step.title}
+                    </h3>
+                    <p className="mt-2 text-sm leading-6 text-cutcare-body">
+                      {step.body}
+                    </p>
+                  </div>
+
+                  <div className="absolute left-0 top-4 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-cutcare-primary text-sm font-black text-white shadow-sm md:static md:col-start-2 md:row-start-1">
+                    {step.number}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Section>
 
       <Section id="description" title="Description">
         <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
@@ -85,32 +165,6 @@ export default function Home() {
         </div>
       </Section>
 
-      <Section id="process" title="Process">
-        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
-          <p className="text-base leading-8 text-cutcare-body">
-            I started by mapping the two main users: clients who need a simple
-            way to request a cut, and barbers who need control over their time,
-            services, and communication. That helped me separate the app into
-            client screens, barber screens, shared booking logic, and account
-            setup.
-          </p>
-          <p className="mt-5 text-base leading-8 text-cutcare-body">
-            After the core screens were in place, I focused on the systems that
-            made the app useful: booking requests, barber availability,
-            messaging, notifications, saved client notes, and calendar support.
-            Each feature was built around reducing the manual work that usually
-            happens through texts and separate calendar entries.
-          </p>
-          <p className="mt-5 text-base leading-8 text-cutcare-body">
-            The AI work came after that foundation. I connected chat responses
-            to haircut profile context and started building a small knowledge
-            base of styles, descriptions, and reasons someone might choose each
-            cut. That gave the assistant more useful context when answering
-            grooming questions or helping a client think through a style.
-          </p>
-        </div>
-      </Section>
-
       <Section id="full-results" title="Full Results">
         <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
           <p className="text-base leading-8 text-cutcare-body">
@@ -122,10 +176,6 @@ export default function Home() {
             one app flow.
           </p>
         </div>
-      </Section>
-
-      <Section id="client-barber" title="Client and Barber Views">
-        <ProcessTabsCarousel />
       </Section>
     </>
   );

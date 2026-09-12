@@ -1,2 +1,0 @@
-- [x] Collapsible weekly availability
-
