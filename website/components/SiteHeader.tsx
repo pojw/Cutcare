@@ -14,8 +14,8 @@ const rightNavItems = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-20 bg-white/90 backdrop-blur">
-      <div className="mx-auto w-full max-w-6xl px-6 py-5 sm:px-10">
-        <div className="grid items-center gap-4 border-b border-cutcare-border/80 pb-4 text-center lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+      <div className="mx-auto w-full max-w-6xl px-6 pb-0 pt-8 sm:px-10 sm:pt-9">
+        <div className="grid items-center gap-4 border-b border-cutcare-border/80 pb-7 text-center lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <nav
             aria-label="Project description navigation"
             className="order-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-base font-semibold text-cutcare-body lg:order-1 lg:justify-end lg:gap-x-8"
