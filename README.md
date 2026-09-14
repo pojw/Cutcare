@@ -13,46 +13,27 @@ The product also supports the full barber-client workflow: clients can discover 
 - Client barber discovery, profile browsing, service selection, and booking creation
 - Barber service management, weekly availability, and booking status workflows
 
-## Product Flow
+## AI Recommendation Flow
 
 ```mermaid
 flowchart TD
-  A[User signs up or logs in] --> B{Choose role}
+  A[Client onboarding] --> B[Upload hair photos]
+  B --> C[AI vision analysis]
+  C --> D[Structured hair profile]
+  D --> E[Client reviews and confirms profile]
+  E --> F[Saved active hair profile]
 
-  B -->|Client| C[Client onboarding]
-  B -->|Barber| D[Barber onboarding]
+  G[Barber haircut knowledge] --> H[Chunk and clean knowledge]
+  H --> I[Vector embeddings]
+  I --> J[(Vector knowledge base)]
 
-  C --> E[Client home]
-  E --> F[Search barbers]
-  F --> G[View barber profile]
-  G --> H[Select services]
-  H --> I[Choose available time slot]
-  I --> J[Create pending booking]
-  J --> K[Client manages booking]
-
-  D --> L[Barber dashboard]
-  L --> M[Manage services]
-  L --> N[Set weekly availability]
-  J --> O[Barber reviews booking request]
-  O --> P{Booking action}
-  P -->|Confirm| Q[Confirmed appointment]
-  P -->|Cancel| R[Cancelled booking]
-  Q --> S[Complete appointment]
-
-  G --> T[Client messages barber]
-  L --> U[Barber messages client]
-  T <--> V[Firestore conversation]
-  U <--> V
-
-  E --> W[Upload hair photos]
-  W --> X[AI vision analysis]
-  X --> Y[Structured hair profile]
-  Y --> Z[Client reviews and confirms profile]
-  Z --> AA[Saved active profile in Firestore]
-  AA --> AB[AI chat recommendation]
-  AC[Haircut knowledge base] --> AD[Embedding retrieval]
-  AD --> AB
-  AB --> AE[Personalized haircut, product, and barber-note guidance]
+  K[Client chatbot query] --> L[Embed query]
+  L --> M[Cosine similarity retrieval]
+  J --> M
+  F --> N[Profile-aware prompt context]
+  M --> N
+  N --> O[RAG chatbot]
+  O --> P[Personalized haircut, product, and barber-note recommendation]
 ```
 
 ## AI System
