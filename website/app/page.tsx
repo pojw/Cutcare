@@ -63,10 +63,14 @@ export default function Home() {
           </h1>
           <div className="mx-auto mt-8 max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
             <p className="text-base leading-8 text-cutcare-body">
-              CutCare is a personal full-stack project that turns barber
-              scheduling, client messaging, and haircut preferences into one
-              organized booking experience, making appointments easier to manage
-              for barbers and easier to request for clients.
+
+   CutCare is a personal full-stack project built to simplify barber scheduling, client communication, and personalized haircut recommendations in one organized platform.
+</p>
+            <p className="text-base mt-2 leading-8 text-cutcare-body">
+
+The project combines booking management, messaging, notifications, profile data, and AI-assisted haircut support across separate client and barber experiences. It gave me hands-on experience connecting frontend interfaces, backend services, cloud functions, structured data, and AI systems into a complete product workflow.
+
+
             </p>
           </div>
         </div>
