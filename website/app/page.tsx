@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ResultsTabsCarousel } from "@/components/ResultsTabsCarousel";
 import { Section } from "@/components/Section";
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -158,15 +159,21 @@ The project combines booking management, messaging, notifications, profile data,
       </Section>
 
       <Section id="full-results" title="Full Results">
-        <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
-          <p className="text-base leading-8 text-cutcare-body">
-            The strongest result is a working product foundation with separate
-            client and barber experiences, account onboarding, barber search,
-            booking management, messaging, notifications, profile details, and
-            AI-assisted haircut support. The project gave me practice connecting
-            mobile UI, Firebase data, cloud functions, and an AI service into
-            one app flow.
-          </p>
+        <div className="mx-auto max-w-5xl">
+          <div className="mx-auto max-w-3xl rounded-lg border border-cutcare-border bg-white p-6 text-center shadow-sm">
+            <p className="text-base leading-8 text-cutcare-body">
+              The strongest result is a working product foundation with separate
+              client and barber experiences, account onboarding, barber search,
+              booking management, messaging, notifications, profile details, and
+              AI-assisted haircut support. The screens below show the finished
+              mobile product across the client booking flow, AI hair profile
+              workflow, and barber management tools.
+            </p>
+          </div>
+
+          <div className="mt-8">
+            <ResultsTabsCarousel />
+          </div>
         </div>
       </Section>
     </>
